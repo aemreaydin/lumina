@@ -1,0 +1,36 @@
+{
+  "name": "lumina",
+  "version-semver": "0.1.0",
+  "dependencies": [
+    {
+      "name": "glad",
+      "version>=": "0.1.36",
+      "features": ["gl-api-46"]
+    },
+    {
+      "name": "glfw3",
+      "version>=": "3.4#1"
+    },
+    {
+      "name": "spdlog",
+      "version>=": "1.15.0#1"
+    },
+    {
+      "name": "shader-slang",
+      "version>=": "2024.15.2"
+    }
+  ],
+  "default-features": [],
+  "features": {
+    "test": {
+      "description": "Dependencies for testing",
+      "dependencies": [
+        {
+          "name": "catch2",
+          "version>=": "3.7.1"
+        }
+      ]
+    }
+  },
+  "builtin-baseline": "d7112d1a4fb50410d3639f5f586972591d848beb"
+}

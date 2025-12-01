@@ -1,0 +1,79 @@
+version: "3"
+
+vars:
+  BUILD_TYPE: '{{.BUILD_TYPE | default "Debug"}}'
+  BUILD_JOBS: '{{.BUILD_JOBS | default "4"}}'
+
+tasks:
+  configure:
+    desc: Configure CMake project
+    sources:
+      - CMakeLists.txt
+      - src/**/*.cpp
+      - src/**/*.hpp
+      - src/**/*.h
+    generates:
+      - build/CMakeCache.txt
+    cmds:
+      - cmake --preset=dev
+
+  build:
+    desc: Build the engine
+    deps: [configure]
+    sources:
+      - src/**/*.cpp
+      - src/**/*.hpp
+      - src/**/*.h
+      - sandbox/**/*.cpp
+      - sandbox/**/*.hpp
+      - sandbox/**/*.h
+    generates:
+      - build/bin/Sandbox{{exeExt}}
+    cmds:
+      - cmake --build --preset=dev
+
+  rebuild:
+    desc: Clean and rebuild from scratch
+    cmds:
+      - task: clean
+      - task: build
+
+  run:
+    desc: Run the Sandbox application
+    deps: [build]
+    dir: build/dev/example
+    cmds:
+      - ./sandbox{{exeExt}}
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf build
+
+  format:
+    desc: Run clang-format on all source files
+    cmds:
+      - find src sandbox \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format -i --verbose
+
+  format-check:
+    desc: Check if code is formatted correctly (non-destructive)
+    cmds:
+      - find src sandbox \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run -Werror --verbose
+
+  tidy:
+    desc: Run clang-tidy static analysis. Treats warnings as errors.
+    deps: [configure]
+    cmds:
+      - find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/dev
+
+  tidy-fix:
+    desc: Run clang-tidy static analysis. Treats warnings as errors.
+    deps: [configure]
+    cmds:
+      - find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/dev -fix
+
+  test:
+    desc: Run tests (placeholder for future test infrastructure)
+    deps: [build]
+    cmds:
+      - echo "No tests configured yet"
