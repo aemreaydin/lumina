@@ -11,7 +11,9 @@ Checks: "*,\
   -llvm-include-order,\
   -llvmlibc-*,\
   -bugprone-easily-swappable-parameters,\
+  -cppcoreguidelines-non-private-member-variables-in-classes,\
   -modernize-use-nodiscard,\
+  -misc-no-recursion,\
   -misc-include-cleaner,\
   -misc-use-anonymous-namespace,\
   -misc-non-private-member-variables-in-classes"
@@ -47,6 +49,10 @@ CheckOptions:
   - key: "readability-qualified-auto.AddConstToQualified"
     value: "true"
   - key: "readability-redundant-access-specifiers.CheckFirstDeclaration"
+    value: "true"
+  - key: "readability-magic-numbers.IgnoreAllFloatingPointValues"
+    value: "true"
+  - key: "cppcoreguidelines-avoid-magic-numbers.IgnoreAllFloatingPointValues"
     value: "true"
   # These seem to be the most common identifier styles
   - key: "readability-identifier-naming.AbstractClassCase"

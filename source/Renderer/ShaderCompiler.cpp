@@ -90,15 +90,15 @@ auto ShaderCompiler::Compile(const std::string& shader_path) -> ShaderSources
     sources.emplace(ShaderType::Vertex, vertex_res.value());
   }
 
-  const auto fragment_res = CompileStage(session, module, "vertexMain");
+  const auto fragment_res = CompileStage(session, module, "fragmentMain");
   if (fragment_res.has_value()) {
     sources.emplace(ShaderType::Fragment, fragment_res.value());
   }
 
-  const auto compute_res = CompileStage(session, module, "vertexMain");
+  const auto compute_res = CompileStage(session, module, "computeMain");
   if (compute_res.has_value()) {
     sources.emplace(ShaderType::Compute, compute_res.value());
   }
 
-  return {};
+  return sources;
 }
