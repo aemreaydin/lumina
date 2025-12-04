@@ -85,11 +85,17 @@ find_package(Vulkan REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC Vulkan::Vulkan)
 
 find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
-target_link_libraries(lumina_lumina PUBLIC unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
+target_link_libraries(
+    lumina_lumina
+    PUBLIC unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
+)
 
 target_compile_definitions(
     lumina_lumina
-    PUBLIC SPDLOG_USE_STD_FORMAT GLFW_INCLUDE_NONE
+    PUBLIC
+        SPDLOG_USE_STD_FORMAT
+        GLFW_INCLUDE_NONE
+        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
 )
 
 # ---- Install rules ----

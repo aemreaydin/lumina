@@ -4,7 +4,6 @@
 
 #include "Core/Logger.hpp"
 #include "GLFW/glfw3.h"
-#include "Renderer/OpenGLContext.hpp"
 
 LinuxWindow::~LinuxWindow()
 {
@@ -20,8 +19,6 @@ void LinuxWindow::Init(WindowProps props)
                m_WindowProps.Dimensions.Width,
                m_WindowProps.Dimensions.Height);
 
-  m_GraphicsContext = std::make_unique<OpenGLContext>();
-  m_GraphicsContext->Init();
   m_Window = glfwCreateWindow(static_cast<int>(m_WindowProps.Dimensions.Width),
                               static_cast<int>(m_WindowProps.Dimensions.Height),
                               m_WindowProps.Title.c_str(),
@@ -35,10 +32,9 @@ void LinuxWindow::Init(WindowProps props)
     throw std::runtime_error("glfwCreateWindow failed.");
   }
 
-  m_GraphicsContext->SetGLFWWindow(m_Window);
   glfwSetWindowUserPointer(m_Window, &m_WindowProps);
-  m_GraphicsContext->LoadFns();
-  SetVSync(/*enabled=*/true);
+
+  // Note: VSync will be set after OpenGL context is made current by RHIDevice
 
   glfwSetWindowSizeCallback(
       m_Window,
@@ -91,5 +87,4 @@ void LinuxWindow::SetVSync(bool enabled)
 void LinuxWindow::OnUpdate()
 {
   glfwPollEvents();
-  m_GraphicsContext->SwapBuffers();
 }

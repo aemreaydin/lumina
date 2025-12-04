@@ -21,6 +21,21 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
 
   m_Window = static_cast<GLFWwindow*>(window);
   Logger::Info("Initializing OpenGL device");
+
+  // Make context current
+  glfwMakeContextCurrent(m_Window);
+
+  // Load OpenGL function pointers
+  if (gladLoadGL() == 0) {
+    Logger::Critical("Failed to load OpenGL function pointers");
+    throw std::runtime_error("gladLoadGL failed");
+  }
+
+  Logger::Info("OpenGL Version: {}.{}", GLVersion.major, GLVersion.minor);
+
+  // Enable VSync by default
+  glfwSwapInterval(1);
+
   m_Initialized = true;
   Logger::Info("OpenGL device initialized successfully");
 }

@@ -3,7 +3,10 @@
 
 #include <memory>
 
+#include "Renderer/RendererConfig.hpp"
 #include "Window.hpp"
+
+class RHIDevice;
 
 class Application
 {
@@ -13,14 +16,18 @@ public:
   Application(Application&&) = delete;
   auto operator=(const Application&) -> Application& = delete;
   auto operator=(Application&&) -> Application& = delete;
-  virtual ~Application() = default;
+  virtual ~Application();
 
   void Run();
 
   void OnEvent(void* event);
 
 private:
+  void init_glfw() const;
+
+  RendererConfig m_RendererConfig;
   std::unique_ptr<Window> m_Window;
+  std::unique_ptr<RHIDevice> m_RHIDevice;
   bool m_Running = true;
   float m_LastFrameTime = 0.0F;
 };

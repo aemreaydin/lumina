@@ -7,7 +7,6 @@
 #include <GLFW/glfw3.h>
 
 #include "Core/Window.hpp"
-#include "Renderer/GraphicsContext.hpp"
 
 class LinuxWindow : public Window
 {
@@ -51,7 +50,6 @@ public:
 
 private:
   GLFWwindow* m_Window {nullptr};
-  std::unique_ptr<GraphicsContext> m_GraphicsContext;
 
   WindowProps m_WindowProps;
 };
