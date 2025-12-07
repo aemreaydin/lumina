@@ -18,6 +18,7 @@ include(cmake/variables.cmake)
 add_library(
     lumina_lumina
     source/Core/Application.cpp
+    source/Core/ConfigLoader.cpp
     source/Core/Logger.cpp
     source/Core/Window.cpp
     # Platform
@@ -30,8 +31,10 @@ add_library(
     source/Renderer/RHI/RHIDevice.cpp
     source/Renderer/RHI/OpenGL/OpenGLDevice.cpp
     source/Renderer/RHI/OpenGL/OpenGLSwapchain.cpp
+    source/Renderer/RHI/OpenGL/OpenGLCommandBuffer.cpp
     source/Renderer/RHI/Vulkan/VulkanDevice.cpp
     source/Renderer/RHI/Vulkan/VulkanSwapchain.cpp
+    source/Renderer/RHI/Vulkan/VulkanCommandBuffer.cpp
 )
 add_library(lumina::lumina ALIAS lumina_lumina)
 
@@ -89,6 +92,9 @@ target_link_libraries(
     lumina_lumina
     PUBLIC unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
 )
+
+find_package(tomlplusplus CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC tomlplusplus::tomlplusplus)
 
 target_compile_definitions(
     lumina_lumina

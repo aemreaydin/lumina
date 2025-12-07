@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 
+#include "Core/ConfigLoader.hpp"
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
 
@@ -18,11 +19,10 @@ static void GLFWErrorCallback(int error, const char* description)
 
 Application::Application()
 {
+  Logger::Init(ConfigLoader::LoadLoggerConfig("config.toml"));
   Logger::Info("Creating application");
 
-  // TODO: Allow configuration of RenderAPI (OpenGL vs Vulkan)
-  m_RendererConfig.API = RenderAPI::Vulkan;
-  m_RendererConfig.EnableValidation = true;
+  m_RendererConfig = ConfigLoader::LoadRendererConfig("config.toml");
 
   init_glfw();
 
@@ -30,10 +30,8 @@ Application::Application()
   m_Window->SetEventCallback([this](void* event) -> void
                              { this->OnEvent(event); });
 
-  // Create RHI device
   m_RHIDevice = RHIDevice::Create(m_RendererConfig);
 
-  // Initialize device with window and create swapchain
   m_RHIDevice->Init(m_RendererConfig, m_Window->GetNativeWindow());
   m_RHIDevice->CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 
@@ -82,7 +80,7 @@ void Application::init_glfw() const
 
 void Application::OnEvent([[maybe_unused]] void* event)
 {
-  Logger::Trace("Event received: {}", m_Window->GetWidth());
+  Logger::Info("Event received: {}", m_Window->GetWidth());
 }
 
 void Application::Run()
@@ -91,8 +89,9 @@ void Application::Run()
 
   while (m_Running) {
     const auto current_frame_time = static_cast<float>(glfwGetTime());
-    // const auto DeltaTime        = CurrentFrameTime - m_LastFrameTime;
+    const auto delta_time = current_frame_time - m_LastFrameTime;
     m_LastFrameTime = current_frame_time;
+    Logger::Trace("delta_time: {}", delta_time);
 
     // Poll events
     m_Window->OnUpdate();

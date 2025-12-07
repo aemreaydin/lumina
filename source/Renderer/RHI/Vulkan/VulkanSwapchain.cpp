@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 
 VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, GLFWwindow* window)
@@ -24,61 +25,25 @@ VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, GLFWwindow* window)
 
   // Create swapchain
   create_swapchain();
-
-  // Create synchronization primitives
-  const vk::SemaphoreCreateInfo semaphore_info {};
-  m_ImageAvailableSemaphore =
-      m_Device.GetVkDevice().createSemaphore(semaphore_info);
-  m_RenderFinishedSemaphore =
-      m_Device.GetVkDevice().createSemaphore(semaphore_info);
-
-  vk::FenceCreateInfo fence_info {};
-  fence_info.flags = vk::FenceCreateFlagBits::eSignaled;
-  m_InFlightFence = m_Device.GetVkDevice().createFence(fence_info);
 }
 
 VulkanSwapchain::~VulkanSwapchain()
 {
-  auto device = m_Device.GetVkDevice();
-
-  if (m_InFlightFence) {
-    device.destroyFence(m_InFlightFence);
-  }
-  if (m_RenderFinishedSemaphore) {
-    device.destroySemaphore(m_RenderFinishedSemaphore);
-  }
-  if (m_ImageAvailableSemaphore) {
-    device.destroySemaphore(m_ImageAvailableSemaphore);
-  }
-
   cleanup_swapchain();
-
-  // Note: Surface is owned by VulkanDevice, not destroyed here
 }
 
-auto VulkanSwapchain::AcquireNextImage() -> uint32_t
+void VulkanSwapchain::AcquireNextImage(vk::Semaphore image_available_semaphore)
 {
   auto device = m_Device.GetVkDevice();
 
-  // Wait for previous frame
-  auto wait_result =
-      device.waitForFences(1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
-  if (wait_result != vk::Result::eSuccess) {
-    throw std::runtime_error("Failed to wait for fence");
-  }
-
-  auto reset_result = device.resetFences(1, &m_InFlightFence);
-  if (reset_result != vk::Result::eSuccess) {
-    throw std::runtime_error("Failed to reset fence");
-  }
-
-  // Acquire next image
   auto result = device.acquireNextImageKHR(
-      m_Swapchain, UINT64_MAX, m_ImageAvailableSemaphore, nullptr);
+      m_Swapchain, UINT64_MAX, image_available_semaphore, nullptr);
 
   if (result.result == vk::Result::eErrorOutOfDateKHR) {
+    Logger::Trace("[Vulkan] Swapchain out of date, resizing");
     Resize(m_Width, m_Height);
-    return AcquireNextImage();
+    AcquireNextImage(image_available_semaphore);
+    return;
   }
 
   if (result.result != vk::Result::eSuccess
@@ -88,31 +53,13 @@ auto VulkanSwapchain::AcquireNextImage() -> uint32_t
   }
 
   m_CurrentImageIndex = result.value;
-  return m_CurrentImageIndex;
-}
-
-void VulkanSwapchain::Present(uint32_t /*image_index*/)
-{
-  vk::PresentInfoKHR present_info {};
-  present_info.waitSemaphoreCount = 1;
-  present_info.pWaitSemaphores = &m_RenderFinishedSemaphore;
-  present_info.swapchainCount = 1;
-  present_info.pSwapchains = &m_Swapchain;
-  present_info.pImageIndices = &m_CurrentImageIndex;
-
-  auto result = m_Device.GetPresentQueue().presentKHR(present_info);
-
-  if (result == vk::Result::eErrorOutOfDateKHR
-      || result == vk::Result::eSuboptimalKHR)
-  {
-    Resize(m_Width, m_Height);
-  } else if (result != vk::Result::eSuccess) {
-    throw std::runtime_error("Failed to present swapchain image");
-  }
+  Logger::Trace("[Vulkan] Acquired swapchain image index: {}",
+                m_CurrentImageIndex);
 }
 
 void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
 {
+  Logger::Trace("[Vulkan] Resizing swapchain to {}x{}", width, height);
   m_Width = width;
   m_Height = height;
 
@@ -120,6 +67,7 @@ void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
 
   cleanup_swapchain();
   create_swapchain();
+  Logger::Trace("[Vulkan] Swapchain resized successfully");
 }
 
 void VulkanSwapchain::create_swapchain()
@@ -204,10 +152,9 @@ void VulkanSwapchain::create_swapchain()
 
   m_Swapchain = m_Device.GetVkDevice().createSwapchainKHR(create_info);
 
-  // Get swapchain images
   m_Images = m_Device.GetVkDevice().getSwapchainImagesKHR(m_Swapchain);
+  Logger::Trace("Created vk::Image with len {}", m_Images.size());
 
-  // Create image views
   m_ImageViews.resize(m_Images.size());
   for (size_t i = 0; i < m_Images.size(); ++i) {
     vk::ImageViewCreateInfo view_info {};
@@ -226,6 +173,7 @@ void VulkanSwapchain::create_swapchain()
 
     m_ImageViews[i] = m_Device.GetVkDevice().createImageView(view_info);
   }
+  Logger::Trace("Created vk::ImageView with len {}", m_ImageViews.size());
 }
 
 void VulkanSwapchain::cleanup_swapchain()

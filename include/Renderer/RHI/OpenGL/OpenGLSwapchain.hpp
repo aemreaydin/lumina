@@ -15,8 +15,6 @@ public:
   explicit OpenGLSwapchain(GLFWwindow* window);
   ~OpenGLSwapchain() override = default;
 
-  auto AcquireNextImage() -> uint32_t override;
-  void Present(uint32_t image_index) override;
   void Resize(uint32_t width, uint32_t height) override;
 
 private:

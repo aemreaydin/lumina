@@ -1,0 +1,14 @@
+# Lumina Engine Configuration
+
+[logger]
+# Level: "trace" or "debug" or "info" or "warn" or "err" or "critical"
+level = "trace"
+
+[renderer]
+# Graphics API: "OpenGL" or "Vulkan"
+api = "Vulkan"
+
+# Enable validation layers (useful for debugging)
+# OpenGL: Enables debug output
+# Vulkan: Enables VK_LAYER_KHRONOS_validation
+validation = true

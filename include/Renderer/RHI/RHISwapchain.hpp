@@ -12,8 +12,6 @@ public:
   auto operator=(RHISwapchain&&) -> RHISwapchain& = delete;
   virtual ~RHISwapchain() = default;
 
-  [[nodiscard]] virtual auto AcquireNextImage() -> uint32_t = 0;
-  virtual void Present(uint32_t image_index) = 0;
   virtual void Resize(uint32_t width, uint32_t height) = 0;
 
   [[nodiscard]] virtual auto GetWidth() const -> uint32_t { return m_Width; }

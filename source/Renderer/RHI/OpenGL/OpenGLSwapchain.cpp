@@ -15,18 +15,6 @@ OpenGLSwapchain::OpenGLSwapchain(GLFWwindow* window)
   }
 }
 
-auto OpenGLSwapchain::AcquireNextImage() -> uint32_t
-{
-  return 0;
-}
-
-void OpenGLSwapchain::Present(uint32_t /*image_index*/)
-{
-  if (m_Window != nullptr) {
-    glfwSwapBuffers(m_Window);
-  }
-}
-
 void OpenGLSwapchain::Resize(uint32_t width, uint32_t height)
 {
   m_Width = width;

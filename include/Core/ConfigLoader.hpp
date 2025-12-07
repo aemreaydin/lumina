@@ -3,6 +3,7 @@
 
 #include <filesystem>
 
+#include "Core/Logger.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 class ConfigLoader
@@ -10,6 +11,9 @@ class ConfigLoader
 public:
   static auto LoadRendererConfig(const std::filesystem::path& config_path)
       -> RendererConfig;
+
+  static auto LoadLoggerConfig(const std::filesystem::path& config_path)
+      -> LoggerConfig;
 
   static void SaveRendererConfig(const RendererConfig& config,
                                  const std::filesystem::path& config_path);

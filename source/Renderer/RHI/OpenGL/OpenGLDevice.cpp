@@ -6,6 +6,7 @@
 #include <glad/glad.h>
 
 #include "Core/Logger.hpp"
+#include "Renderer/RHI/RenderPassInfo.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
@@ -36,6 +37,9 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
   // Enable VSync by default
   glfwSwapInterval(1);
 
+  // Create command buffer
+  m_CommandBuffer = std::make_unique<RHICommandBuffer<OpenGLBackend>>();
+
   m_Initialized = true;
   Logger::Info("OpenGL device initialized successfully");
 }
@@ -58,25 +62,43 @@ void OpenGLDevice::Destroy()
   }
 
   Logger::Trace("OpenGL device shutting down");
+  m_CommandBuffer.reset();
   m_Swapchain.reset();
   m_Initialized = false;
 }
 
 void OpenGLDevice::BeginFrame()
 {
-  glClearColor(1.0F, 0.1F, 0.1F, 1.0F);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  if (!m_CommandBuffer || !m_Swapchain) {
+    return;
+  }
+
+  m_CommandBuffer->Begin();
+
+  RenderPassInfo render_pass {};
+  render_pass.ColorAttachment.ColorLoadOp = LoadOp::Clear;
+  render_pass.ColorAttachment.ClearColor = {
+      .R = 1.0F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+  render_pass.Width = m_Swapchain->GetWidth();
+  render_pass.Height = m_Swapchain->GetHeight();
+
+  m_CommandBuffer->BeginRenderPass(render_pass);
 }
 
 void OpenGLDevice::EndFrame()
 {
-  // Nothing to do here for OpenGL
+  if (!m_CommandBuffer) {
+    return;
+  }
+
+  m_CommandBuffer->EndRenderPass();
+  m_CommandBuffer->End();
 }
 
 void OpenGLDevice::Present()
 {
-  if (m_Swapchain != nullptr) {
-    m_Swapchain->Present(0);
+  if (m_Window != nullptr) {
+    glfwSwapBuffers(m_Window);
   }
 }
 

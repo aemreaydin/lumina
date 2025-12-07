@@ -12,6 +12,7 @@ Checks: "*,\
   -llvmlibc-*,\
   -bugprone-easily-swappable-parameters,\
   -cppcoreguidelines-non-private-member-variables-in-classes,\
+  -cppcoreguidelines-pro-type-union-access,\
   -modernize-use-nodiscard,\
   -misc-no-recursion,\
   -misc-include-cleaner,\
@@ -54,6 +55,10 @@ CheckOptions:
     value: "true"
   - key: "cppcoreguidelines-avoid-magic-numbers.IgnoreAllFloatingPointValues"
     value: "true"
+  - key: "readability-identifier-length.IgnoredVariableNames"
+    value: "r|g|b|a"
+  - key: "readability-identifier-length.IgnoredParameterNames"
+    value: "r|g|b|a"
   # These seem to be the most common identifier styles
   - key: "readability-identifier-naming.AbstractClassCase"
     value: "CamelCase"

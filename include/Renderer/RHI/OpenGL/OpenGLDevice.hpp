@@ -3,6 +3,8 @@
 
 #include <memory>
 
+#include "Renderer/RHI/OpenGL/OpenGLBackend.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLCommandBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLSwapchain.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
 
@@ -30,6 +32,7 @@ public:
 
 private:
   std::unique_ptr<OpenGLSwapchain> m_Swapchain;
+  std::unique_ptr<RHICommandBuffer<OpenGLBackend>> m_CommandBuffer;
   GLFWwindow* m_Window {nullptr};
   bool m_Initialized {false};
 };

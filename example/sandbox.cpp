@@ -16,8 +16,6 @@ auto CreateApplication() -> std::unique_ptr<Application>
 
 auto main() -> int
 {
-  Logger::Init();
-
   const auto app = CreateApplication();
   app->Run();
 

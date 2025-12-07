@@ -22,4 +22,13 @@ endfunction()
 
 add_example(sandbox)
 
+# Copy config.toml to the example build directory
+add_custom_command(
+    TARGET sandbox POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/config.toml"
+        "$<TARGET_FILE_DIR:sandbox>/config.toml"
+    COMMENT "Copying config.toml to example directory"
+)
+
 add_folders(Example)

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_handles.hpp>
 
 #include "Renderer/RHI/RHISwapchain.hpp"
 
@@ -20,8 +21,7 @@ public:
   VulkanSwapchain(VulkanDevice& device, GLFWwindow* window);
   ~VulkanSwapchain() override;
 
-  auto AcquireNextImage() -> uint32_t override;
-  void Present(uint32_t image_index) override;
+  void AcquireNextImage(vk::Semaphore image_available_semaphore);
   void Resize(uint32_t width, uint32_t height) override;
 
   auto GetVkSwapchain() const -> vk::SwapchainKHR { return m_Swapchain; }
@@ -32,6 +32,21 @@ public:
   }
 
   auto GetFormat() const -> vk::Format { return m_Format; }
+
+  [[nodiscard]] auto GetCurrentImage() const -> vk::Image
+  {
+    return m_Images[m_CurrentImageIndex];
+  }
+
+  [[nodiscard]] auto GetCurrentImageView() const -> vk::ImageView
+  {
+    return m_ImageViews[m_CurrentImageIndex];
+  }
+
+  [[nodiscard]] auto GetCurrentImageIndex() const -> uint32_t
+  {
+    return m_CurrentImageIndex;
+  }
 
 private:
   void create_swapchain();
@@ -46,11 +61,7 @@ private:
 
   std::vector<vk::Image> m_Images;
   std::vector<vk::ImageView> m_ImageViews;
-
   uint32_t m_CurrentImageIndex {0};
-  vk::Semaphore m_ImageAvailableSemaphore;
-  vk::Semaphore m_RenderFinishedSemaphore;
-  vk::Fence m_InFlightFence;
 };
 
 #endif
