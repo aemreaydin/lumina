@@ -3,13 +3,20 @@
 
 #include <memory>
 
+#include <spdlog/common.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+struct LoggerConfig
+{
+  spdlog::level::level_enum Level {spdlog::level::trace};
+};
+
 class Logger
+
 {
 public:
-  static void Init();
+  static void Init(const LoggerConfig& logger_config);
 
   static auto GetLogger() -> std::shared_ptr<spdlog::logger>&
   {
