@@ -2,11 +2,10 @@
 #define RENDERER_RHI_VULKAN_VULKANDEVICE_HPP
 
 #include <array>
-#include <deque>
 #include <memory>
+#include <vector>
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_handles.hpp>
+#include <vulkan/vulkan.h>
 
 #include "Renderer/RHI/RHIDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
@@ -43,29 +42,23 @@ public:
 
   [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
 
-  [[nodiscard]] auto GetVkInstance() const -> vk::Instance
-  {
-    return m_Instance;
-  }
+  [[nodiscard]] auto GetVkInstance() const -> VkInstance { return m_Instance; }
 
-  [[nodiscard]] auto GetVkSurface() const -> vk::SurfaceKHR
-  {
-    return m_Surface;
-  }
+  [[nodiscard]] auto GetVkSurface() const -> VkSurfaceKHR { return m_Surface; }
 
-  [[nodiscard]] auto GetVkDevice() const -> vk::Device { return m_Device; }
+  [[nodiscard]] auto GetVkDevice() const -> VkDevice { return m_Device; }
 
-  [[nodiscard]] auto GetVkPhysicalDevice() const -> vk::PhysicalDevice
+  [[nodiscard]] auto GetVkPhysicalDevice() const -> VkPhysicalDevice
   {
     return m_PhysicalDevice;
   }
 
-  [[nodiscard]] auto GetGraphicsQueue() const -> vk::Queue
+  [[nodiscard]] auto GetGraphicsQueue() const -> VkQueue
   {
     return m_GraphicsQueue;
   }
 
-  [[nodiscard]] auto GetPresentQueue() const -> vk::Queue
+  [[nodiscard]] auto GetPresentQueue() const -> VkQueue
   {
     return m_PresentQueue;
   }
@@ -81,25 +74,20 @@ public:
   }
 
 private:
-  void pick_physical_device(vk::SurfaceKHR surface);
-  void create_logical_device(vk::SurfaceKHR surface);
+  void pick_physical_device(VkSurfaceKHR surface);
+  void create_logical_device(VkSurfaceKHR surface);
   void setup_debug_messenger();
-  [[nodiscard]] auto create_command_pool() -> vk::CommandPool;
+  [[nodiscard]] auto create_command_pool() -> VkCommandPool;
 
   void setup_frame_data();
-  [[nodiscard]] auto get_fence() -> vk::Fence;
-  void recycle_fence(vk::Fence fence);
-  [[nodiscard]] auto get_semaphore() -> vk::Semaphore;
-  void recycle_semaphore(vk::Semaphore semaphore);
-  void cleanup_present_history();
 
-  vk::Instance m_Instance;
-  vk::DebugUtilsMessengerEXT m_DebugMessenger;
-  vk::SurfaceKHR m_Surface;
-  vk::PhysicalDevice m_PhysicalDevice;
-  vk::Device m_Device;
-  vk::Queue m_GraphicsQueue;
-  vk::Queue m_PresentQueue;
+  VkInstance m_Instance {VK_NULL_HANDLE};
+  VkDebugUtilsMessengerEXT m_DebugMessenger {VK_NULL_HANDLE};
+  VkSurfaceKHR m_Surface {VK_NULL_HANDLE};
+  VkPhysicalDevice m_PhysicalDevice {VK_NULL_HANDLE};
+  VkDevice m_Device {VK_NULL_HANDLE};
+  VkQueue m_GraphicsQueue {VK_NULL_HANDLE};
+  VkQueue m_PresentQueue {VK_NULL_HANDLE};
   uint32_t m_GraphicsQueueFamily {0};
   uint32_t m_PresentQueueFamily {0};
 
@@ -108,10 +96,8 @@ private:
   bool m_Initialized {false};
   bool m_ValidationEnabled {false};
 
-  std::vector<vk::Semaphore> m_SemaphorePool;
-  std::vector<vk::Fence> m_FencePool;
-  std::deque<PresentInfo> m_PresentInfo;
   std::array<VulkanFrame, MAX_FRAMES_IN_FLIGHT> m_FrameData;
+  std::vector<VkSemaphore> m_RenderFinishedSemaphores;
   uint32_t m_CurrentFrameIndex {0};
 };
 

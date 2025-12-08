@@ -26,7 +26,7 @@ void Logger::Init(const LoggerConfig& logger_config)
 
     // Daily file sink (rotates at midnight)
     auto file_sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(
-        "logs/lumina.log", 0, 0);  // Rotate at midnight (00:00)
+        "logs/lumina.log", 0, 0, true);  // Rotate at midnight (00:00)
     file_sink->set_pattern("[%Y-%m-%d %T] [%l] %v");
     sinks.push_back(file_sink);
 

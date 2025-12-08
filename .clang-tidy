@@ -13,6 +13,8 @@ Checks: "*,\
   -bugprone-easily-swappable-parameters,\
   -cppcoreguidelines-non-private-member-variables-in-classes,\
   -cppcoreguidelines-pro-type-union-access,\
+  -cppcoreguidelines-pro-type-reinterpret-cast,\
+  -hicpp-signed-bitwise,\
   -modernize-use-nodiscard,\
   -misc-no-recursion,\
   -misc-include-cleaner,\

@@ -101,7 +101,6 @@ target_compile_definitions(
     PUBLIC
         SPDLOG_USE_STD_FORMAT
         GLFW_INCLUDE_NONE
-        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC
 )
 
 # ---- Install rules ----

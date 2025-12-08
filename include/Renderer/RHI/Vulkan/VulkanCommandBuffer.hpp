@@ -1,8 +1,7 @@
 #ifndef RENDERER_RHI_VULKAN_VULKANCOMMANDBUFFER_HPP
 #define RENDERER_RHI_VULKAN_VULKANCOMMANDBUFFER_HPP
 
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_handles.hpp>
+#include <vulkan/vulkan.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanBackend.hpp"
@@ -21,8 +20,8 @@ public:
   auto operator=(RHICommandBuffer&&) -> RHICommandBuffer& = delete;
   ~RHICommandBuffer() = default;
 
-  void Allocate(const VulkanDevice& device, const vk::CommandPool& pool);
-  void Free(const VulkanDevice& device, const vk::CommandPool& pool);
+  void Allocate(const VulkanDevice& device, VkCommandPool pool);
+  void Free(const VulkanDevice& device, VkCommandPool pool);
   void Begin();
   void End();
 
@@ -33,10 +32,10 @@ public:
   void ClearColor(
       const VulkanSwapchain& swapchain, float r, float g, float b, float a);
 
-  [[nodiscard]] auto GetHandle() -> vk::CommandBuffer;
+  [[nodiscard]] auto GetHandle() -> VkCommandBuffer;
 
 private:
-  vk::CommandBuffer m_CommandBuffer;
+  VkCommandBuffer m_CommandBuffer {VK_NULL_HANDLE};
   bool m_Recording {false};
   bool m_InRenderPass {false};
   RenderPassInfo m_CurrentRenderPass {};
