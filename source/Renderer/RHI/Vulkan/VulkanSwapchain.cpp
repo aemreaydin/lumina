@@ -6,9 +6,11 @@
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 
 #include <GLFW/glfw3.h>
+#include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
+#include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
 VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, GLFWwindow* window)
     : m_Device(device)
@@ -34,23 +36,28 @@ void VulkanSwapchain::AcquireNextImage(VkSemaphore image_available_semaphore)
 {
   VkDevice device = m_Device.GetVkDevice();
 
-  VkResult result = vkAcquireNextImageKHR(device,
-                                          m_Swapchain,
-                                          UINT64_MAX,
-                                          image_available_semaphore,
-                                          VK_NULL_HANDLE,
-                                          &m_CurrentImageIndex);
-
-  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+  const auto allowed = {VK_ERROR_OUT_OF_DATE_KHR, VK_SUBOPTIMAL_KHR};
+  const auto result =
+      VkUtils::Check(vkAcquireNextImageKHR(device,
+                                           m_Swapchain,
+                                           UINT64_MAX,
+                                           image_available_semaphore,
+                                           VK_NULL_HANDLE,
+                                           &m_CurrentImageIndex),
+                     allowed);
+  if (result
+      && (result.value() == VK_SUBOPTIMAL_KHR
+          || result.value() == VK_ERROR_OUT_OF_DATE_KHR))
+  {
     Logger::Trace("[Vulkan] Swapchain out of date, resizing");
     Resize(m_Width, m_Height);
     AcquireNextImage(image_available_semaphore);
     return;
   }
-
-  if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-    throw std::runtime_error(std::format(
-        "Failed to acquire swapchain image: {}", static_cast<int>(result)));
+  if (!result) {
+    throw std::runtime_error(
+        std::format("Failed to acquire swapchain image: {}",
+                    VkUtils::ToString(result.error())));
   }
 
   Logger::Trace("[Vulkan] Acquired swapchain image index: {}",
@@ -63,10 +70,11 @@ void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
   m_Width = width;
   m_Height = height;
 
-  VkResult result = vkDeviceWaitIdle(m_Device.GetVkDevice());
-  if (result != VK_SUCCESS) {
-    throw std::runtime_error(
-        std::format("Failed to waitIdle: {}", static_cast<int>(result)));
+  if (auto result = VkUtils::Check(vkDeviceWaitIdle(m_Device.GetVkDevice()));
+      !result)
+  {
+    throw std::runtime_error(std::format("Failed to waitIdle: {}",
+                                         VkUtils::ToString(result.error())));
   }
 
   cleanup_swapchain();
@@ -80,37 +88,42 @@ void VulkanSwapchain::create_swapchain()
   VkPhysicalDevice physical_device = m_Device.GetVkPhysicalDevice();
   VkDevice device = m_Device.GetVkDevice();
 
-  // TODO: Use VulkanUtils for error checking
   VkSurfaceCapabilitiesKHR capabilities;
-  VkResult cap_result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-      physical_device, m_Surface, &capabilities);
-  if (cap_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+          physical_device, m_Surface, &capabilities));
+      !result)
+  {
     throw std::runtime_error(
         std::format("Failed to get surface capabilities: {}",
-                    static_cast<int>(cap_result)));
+                    VkUtils::ToString(result.error())));
   }
 
   uint32_t format_count = 0;
   vkGetPhysicalDeviceSurfaceFormatsKHR(
       physical_device, m_Surface, &format_count, nullptr);
   std::vector<VkSurfaceFormatKHR> formats(format_count);
-  VkResult format_result = vkGetPhysicalDeviceSurfaceFormatsKHR(
-      physical_device, m_Surface, &format_count, formats.data());
-  if (format_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vkGetPhysicalDeviceSurfaceFormatsKHR(
+          physical_device, m_Surface, &format_count, formats.data()));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to get surface formats: {}",
-                                         static_cast<int>(format_result)));
+                                         VkUtils::ToString(result.error())));
   }
 
   uint32_t present_mode_count = 0;
   vkGetPhysicalDeviceSurfacePresentModesKHR(
       physical_device, m_Surface, &present_mode_count, nullptr);
   std::vector<VkPresentModeKHR> present_modes(present_mode_count);
-  VkResult present_mode_result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-      physical_device, m_Surface, &present_mode_count, present_modes.data());
-  if (present_mode_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(
+          vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,
+                                                    m_Surface,
+                                                    &present_mode_count,
+                                                    present_modes.data()));
+      !result)
+  {
     throw std::runtime_error(
         std::format("Failed to get surface present modes: {}",
-                    static_cast<int>(present_mode_result)));
+                    VkUtils::ToString(result.error())));
   }
 
   VkSurfaceFormatKHR surface_format = formats[0];
@@ -182,21 +195,23 @@ void VulkanSwapchain::create_swapchain()
   create_info.clipped = VK_TRUE;
   create_info.oldSwapchain = m_OldSwapchain;
 
-  VkResult create_result =
-      vkCreateSwapchainKHR(device, &create_info, nullptr, &m_Swapchain);
-  if (create_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(
+          vkCreateSwapchainKHR(device, &create_info, nullptr, &m_Swapchain));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to create swapchain: {}",
-                                         static_cast<int>(create_result)));
+                                         VkUtils::ToString(result.error())));
   }
 
   uint32_t image_count_result = 0;
   vkGetSwapchainImagesKHR(device, m_Swapchain, &image_count_result, nullptr);
   m_Images.resize(image_count_result);
-  VkResult images_result = vkGetSwapchainImagesKHR(
-      device, m_Swapchain, &image_count_result, m_Images.data());
-  if (images_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vkGetSwapchainImagesKHR(
+          device, m_Swapchain, &image_count_result, m_Images.data()));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to get swapchain images: {}",
-                                         static_cast<int>(images_result)));
+                                         VkUtils::ToString(result.error())));
   }
   Logger::Trace("Created VkImage with len {}", m_Images.size());
 
@@ -217,11 +232,12 @@ void VulkanSwapchain::create_swapchain()
     view_info.subresourceRange.baseArrayLayer = 0;
     view_info.subresourceRange.layerCount = 1;
 
-    VkResult view_result =
-        vkCreateImageView(device, &view_info, nullptr, &m_ImageViews[i]);
-    if (view_result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(
+            vkCreateImageView(device, &view_info, nullptr, &m_ImageViews[i]));
+        !result)
+    {
       throw std::runtime_error(std::format("Failed to create image view: {}",
-                                           static_cast<int>(view_result)));
+                                           VkUtils::ToString(result.error())));
     }
   }
   Logger::Trace("Created VkImageView with len {}", m_ImageViews.size());

@@ -5,15 +5,15 @@
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 
 #include <GLFW/glfw3.h>
+#include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RenderPassInfo.hpp"
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
+#include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 /*
- * TODO: Add magic_enum for VkResult string conversion
- * TODO: Create VulkanUtils.hpp for error checking helpers
  * TODO: Use volk for Vulkan function loading instead of manual loading
  * TODO: There should be checks in place for extension availability and
  * alternatives need to be implemented.
@@ -112,11 +112,12 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
     create_info.enabledLayerCount = 0;
   }
 
-  VkResult instance_result =
-      vkCreateInstance(&create_info, nullptr, &m_Instance);
-  if (instance_result != VK_SUCCESS) {
+  if (auto result =
+          VkUtils::Check(vkCreateInstance(&create_info, nullptr, &m_Instance));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to create Vulkan instance: {}",
-                                         static_cast<int>(instance_result)));
+                                         VkUtils::ToString(result.error())));
   }
 
   // Set up debug messenger
@@ -161,12 +162,13 @@ void VulkanDevice::CreateSwapchain([[maybe_unused]] uint32_t width,
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkResult result =
-        vkCreateSemaphore(m_Device, &semaphore_info, nullptr, &semaphore);
-    if (result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(
+            vkCreateSemaphore(m_Device, &semaphore_info, nullptr, &semaphore));
+        !result)
+    {
       throw std::runtime_error(
           std::format("Failed to create render finished semaphore: {}",
-                      static_cast<int>(result)));
+                      VkUtils::ToString(result.error())));
     }
   }
 
@@ -181,9 +183,9 @@ void VulkanDevice::Destroy()
   }
 
   if (m_Device != VK_NULL_HANDLE) {
-    const auto result = vkDeviceWaitIdle(m_Device);
-    if (result != VK_SUCCESS) {
-      throw std::runtime_error("Failed to wait device idle");
+    if (auto result = VkUtils::Check(vkDeviceWaitIdle(m_Device)); !result) {
+      throw std::runtime_error(std::format("Failed to wait device idle: {}",
+                                           VkUtils::ToString(result.error())));
     }
   }
 
@@ -278,12 +280,13 @@ void VulkanDevice::EndFrame()
       &m_RenderFinishedSemaphores.at(m_Swapchain->GetCurrentImageIndex());
 
   Logger::Trace("[Vulkan] Submitting command buffer to graphics queue");
-  VkResult submit_result =
-      vkQueueSubmit(m_GraphicsQueue, 1, &submit_info, frame_data.InFlightFence);
-  if (submit_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vkQueueSubmit(
+          m_GraphicsQueue, 1, &submit_info, frame_data.InFlightFence));
+      !result)
+  {
     throw std::runtime_error(
         std::format("Failed to submit to graphics queue: {}",
-                    static_cast<int>(submit_result)));
+                    VkUtils::ToString(result.error())));
   }
 }
 
@@ -309,16 +312,21 @@ void VulkanDevice::Present()
   present_info.pSwapchains = &swapchain_khr;
   present_info.pImageIndices = &current_index;
 
-  VkResult present_result = vkQueuePresentKHR(m_PresentQueue, &present_info);
-  if (present_result == VK_ERROR_OUT_OF_DATE_KHR
-      || present_result == VK_SUBOPTIMAL_KHR)
+  const auto allowed = {VK_SUBOPTIMAL_KHR, VK_ERROR_OUT_OF_DATE_KHR};
+  auto result =
+      VkUtils::Check(vkQueuePresentKHR(m_PresentQueue, &present_info), allowed);
+  if (result
+      && (result.value() == VK_SUBOPTIMAL_KHR
+          || result.value() == VK_ERROR_OUT_OF_DATE_KHR))
   {
     Logger::Trace("[Vulkan] Swapchain suboptimal or out of date, resizing");
     m_Swapchain->Resize(m_Swapchain->GetWidth(), m_Swapchain->GetHeight());
-  } else if (present_result != VK_SUCCESS) {
-    throw std::runtime_error(
-        std::format("Failed to present swapchain image: {}",
-                    static_cast<int>(present_result)));
+  } else if (!result) {
+    {
+      throw std::runtime_error(
+          std::format("Failed to present swapchain image: {}",
+                      VkUtils::ToString(result.error())));
+    }
   }
 
   m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -340,10 +348,13 @@ void VulkanDevice::pick_physical_device(VkSurfaceKHR surface)
   }
 
   std::vector<VkPhysicalDevice> devices(device_count);
-  const VkResult result =
-      vkEnumeratePhysicalDevices(m_Instance, &device_count, devices.data());
-  if (result != VK_SUCCESS) {
-    throw std::runtime_error("Failed to enumerate physical devices.");
+  if (auto result = VkUtils::Check(vkEnumeratePhysicalDevices(
+          m_Instance, &device_count, devices.data()));
+      !result)
+  {
+    throw std::runtime_error(
+        std::format("Failed to enumerate physical devices: {}",
+                    VkUtils::ToString(result.error())));
   }
 
   // Check each device for surface support
@@ -468,11 +479,12 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
       static_cast<uint32_t>(device_extensions.size());
   create_info.ppEnabledExtensionNames = device_extensions.data();
 
-  VkResult device_result =
-      vkCreateDevice(m_PhysicalDevice, &create_info, nullptr, &m_Device);
-  if (device_result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(
+          vkCreateDevice(m_PhysicalDevice, &create_info, nullptr, &m_Device));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to create logical device: {}",
-                                         static_cast<int>(device_result)));
+                                         VkUtils::ToString(result.error())));
   }
 
   vkGetDeviceQueue(m_Device, m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
@@ -499,11 +511,12 @@ void VulkanDevice::setup_debug_messenger()
     throw std::runtime_error("Failed to load vkCreateDebugUtilsMessengerEXT");
   }
 
-  VkResult result = vk_create_debug_utils_messenger_ext(
-      m_Instance, &create_info, nullptr, &m_DebugMessenger);
-  if (result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vk_create_debug_utils_messenger_ext(
+          m_Instance, &create_info, nullptr, &m_DebugMessenger));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to create debug messenger: {}",
-                                         static_cast<int>(result)));
+                                         VkUtils::ToString(result.error())));
   }
 }
 
@@ -515,10 +528,12 @@ auto VulkanDevice::create_command_pool() -> VkCommandPool
   pool_info.queueFamilyIndex = m_GraphicsQueueFamily;
 
   VkCommandPool pool {};
-  VkResult result = vkCreateCommandPool(m_Device, &pool_info, nullptr, &pool);
-  if (result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(
+          vkCreateCommandPool(m_Device, &pool_info, nullptr, &pool));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to create command pool: {}",
-                                         static_cast<int>(result)));
+                                         VkUtils::ToString(result.error())));
   }
   return pool;
 }
@@ -527,26 +542,28 @@ void VulkanDevice::setup_frame_data()
 {
   auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
   if (frame_data.InFlightFence != VK_NULL_HANDLE) {
-    VkResult wait_result = vkWaitForFences(
-        m_Device, 1, &frame_data.InFlightFence, VK_TRUE, UINT64_MAX);
-    if (wait_result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(vkWaitForFences(
+            m_Device, 1, &frame_data.InFlightFence, VK_TRUE, UINT64_MAX));
+        !result)
+    {
       throw std::runtime_error(std::format("Failed to wait for fence: {}",
-                                           static_cast<int>(wait_result)));
+                                           VkUtils::ToString(result.error())));
     }
 
-    VkResult reset_result =
-        vkResetFences(m_Device, 1, &frame_data.InFlightFence);
-    if (reset_result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(
+            vkResetFences(m_Device, 1, &frame_data.InFlightFence));
+        !result)
+    {
       throw std::runtime_error(std::format("Failed to reset fence: {}",
-                                           static_cast<int>(reset_result)));
+                                           VkUtils::ToString(result.error())));
     }
 
-    VkResult pool_reset_result =
-        vkResetCommandPool(m_Device, frame_data.CommandPool, 0);
-    if (pool_reset_result != VK_SUCCESS) {
-      throw std::runtime_error(
-          std::format("Failed to reset command pool: {}",
-                      static_cast<int>(pool_reset_result)));
+    if (auto result = VkUtils::Check(
+            vkResetCommandPool(m_Device, frame_data.CommandPool, 0));
+        !result)
+    {
+      throw std::runtime_error(std::format("Failed to reset command pool: {}",
+                                           VkUtils::ToString(result.error())));
     }
   }
 
@@ -554,25 +571,27 @@ void VulkanDevice::setup_frame_data()
     VkFenceCreateInfo fence_info = {};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    VkResult fence_result = vkCreateFence(
-        m_Device, &fence_info, nullptr, &frame_data.InFlightFence);
-    if (fence_result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(vkCreateFence(
+            m_Device, &fence_info, nullptr, &frame_data.InFlightFence));
+        !result)
+    {
       throw std::runtime_error(std::format("Failed to create fence: {}",
-                                           static_cast<int>(fence_result)));
+                                           VkUtils::ToString(result.error())));
     }
   }
   if (frame_data.ImageAvailableSemaphore == VK_NULL_HANDLE) {
     VkSemaphoreCreateInfo semaphore_info = {};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkResult semaphore_result =
-        vkCreateSemaphore(m_Device,
-                          &semaphore_info,
-                          nullptr,
-                          &frame_data.ImageAvailableSemaphore);
-    if (semaphore_result != VK_SUCCESS) {
+    if (auto result = VkUtils::Check(
+            vkCreateSemaphore(m_Device,
+                              &semaphore_info,
+                              nullptr,
+                              &frame_data.ImageAvailableSemaphore));
+        !result)
+    {
       throw std::runtime_error(std::format("Failed to create semaphore: {}",
-                                           static_cast<int>(semaphore_result)));
+                                           VkUtils::ToString(result.error())));
     }
   }
   if (frame_data.CommandPool == VK_NULL_HANDLE) {

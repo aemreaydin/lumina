@@ -5,6 +5,7 @@
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
+#include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
 void RHICommandBuffer<VulkanBackend>::Allocate(const VulkanDevice& device,
                                                VkCommandPool pool)
@@ -15,11 +16,13 @@ void RHICommandBuffer<VulkanBackend>::Allocate(const VulkanDevice& device,
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
   alloc_info.commandBufferCount = 1;
 
-  VkResult result = vkAllocateCommandBuffers(
-      device.GetVkDevice(), &alloc_info, &m_CommandBuffer);
-  if (result != VK_SUCCESS) {
-    throw std::runtime_error(std::format(
-        "Failed to allocate command buffers: {}", static_cast<int>(result)));
+  if (auto result = VkUtils::Check(vkAllocateCommandBuffers(
+          device.GetVkDevice(), &alloc_info, &m_CommandBuffer));
+      !result)
+  {
+    throw std::runtime_error(
+        std::format("Failed to allocate command buffers: {}",
+                    VkUtils::ToString(result.error())));
   }
 }
 
@@ -36,10 +39,12 @@ void RHICommandBuffer<VulkanBackend>::Begin()
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-  VkResult result = vkBeginCommandBuffer(m_CommandBuffer, &begin_info);
-  if (result != VK_SUCCESS) {
+  if (auto result =
+          VkUtils::Check(vkBeginCommandBuffer(m_CommandBuffer, &begin_info));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to begin command buffer: {}",
-                                         static_cast<int>(result)));
+                                         VkUtils::ToString(result.error())));
   }
   m_Recording = true;
 }
@@ -51,10 +56,11 @@ void RHICommandBuffer<VulkanBackend>::End()
         "Trying to end command buffer without ending render pass first.");
   }
 
-  VkResult result = vkEndCommandBuffer(m_CommandBuffer);
-  if (result != VK_SUCCESS) {
+  if (auto result = VkUtils::Check(vkEndCommandBuffer(m_CommandBuffer));
+      !result)
+  {
     throw std::runtime_error(std::format("Failed to end command buffer: {}",
-                                         static_cast<int>(result)));
+                                         VkUtils::ToString(result.error())));
   }
   m_Recording = false;
   Logger::Trace("[Vulkan] End command buffer recording");
