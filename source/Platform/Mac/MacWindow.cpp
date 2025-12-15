@@ -1,20 +1,20 @@
 #include <cassert>
 
-#include "Platform/Linux/LinuxWindow.hpp"
+#include "Platform/Mac/MacWindow.hpp"
 
 #include "Core/Logger.hpp"
 #include "GLFW/glfw3.h"
 
-LinuxWindow::~LinuxWindow()
+MacWindow::~MacWindow()
 {
-  Logger::Trace("Destroying Linux window");
+  Logger::Trace("Destroying Mac window");
   glfwDestroyWindow(m_Window);
 }
 
-void LinuxWindow::Init(WindowProps props)
+void MacWindow::Init(WindowProps props)
 {
   m_WindowProps = props;
-  Logger::Info("Creating Linux window: {} ({}x{})",
+  Logger::Info("Creating Mac window: {} ({}x{})",
                m_WindowProps.Title,
                m_WindowProps.Dimensions.Width,
                m_WindowProps.Dimensions.Height);
@@ -82,10 +82,10 @@ void LinuxWindow::Init(WindowProps props)
         }
       });
 
-  Logger::Info("Linux window created successfully");
+  Logger::Info("Mac window created successfully");
 }
 
-void LinuxWindow::SetVSync(bool enabled)
+void MacWindow::SetVSync(bool enabled)
 {
   if (enabled) {
     glfwSwapInterval(1);
@@ -96,7 +96,7 @@ void LinuxWindow::SetVSync(bool enabled)
   Logger::Info("VSync {}", enabled ? "enabled" : "disabled");
 }
 
-void LinuxWindow::OnUpdate()
+void MacWindow::OnUpdate()
 {
   glfwPollEvents();
 }

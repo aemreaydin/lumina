@@ -1,5 +1,5 @@
-#ifndef PLATFORM_LINUXWINDOW_HPP
-#define PLATFORM_LINUXWINDOW_HPP
+#ifndef PLATFORM_MACWINDOW_HPP
+#define PLATFORM_MACWINDOW_HPP
 
 #include <cstdint>
 #include <functional>
@@ -8,15 +8,15 @@
 
 #include "Core/Window.hpp"
 
-class LinuxWindow : public Window
+class MacWindow : public Window
 {
 public:
-  LinuxWindow() = default;
-  LinuxWindow(const LinuxWindow&) = delete;
-  LinuxWindow(LinuxWindow&&) = delete;
-  auto operator=(const LinuxWindow&) -> LinuxWindow& = delete;
-  auto operator=(LinuxWindow&&) -> LinuxWindow& = delete;
-  ~LinuxWindow() override;
+  MacWindow() = default;
+  MacWindow(const MacWindow&) = delete;
+  MacWindow(MacWindow&&) = delete;
+  auto operator=(const MacWindow&) -> MacWindow& = delete;
+  auto operator=(MacWindow&&) -> MacWindow& = delete;
+  ~MacWindow() override;
 
   void Init(WindowProps props) override;
   void OnUpdate() override;

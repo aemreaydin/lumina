@@ -31,4 +31,13 @@ add_custom_command(
     COMMENT "Copying config.toml to example directory"
 )
 
+# Copy shaders to the example build directory
+add_custom_command(
+    TARGET sandbox POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+        "$<TARGET_FILE_DIR:sandbox>/shaders"
+    COMMENT "Copying shaders to example directory"
+)
+
 add_folders(Example)

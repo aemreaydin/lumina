@@ -6,10 +6,62 @@
 #include <span>
 #include <string_view>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
+
+#include "Renderer/RHI/RHIDescriptorSet.hpp"
+#include "Renderer/RHI/RHIShaderModule.hpp"
 
 namespace VkUtils
 {
+
+constexpr auto ToVkShaderStage(ShaderStage stage) -> VkShaderStageFlagBits
+{
+  switch (stage) {
+    case ShaderStage::Vertex:
+      return VK_SHADER_STAGE_VERTEX_BIT;
+    case ShaderStage::Fragment:
+      return VK_SHADER_STAGE_FRAGMENT_BIT;
+    case ShaderStage::Compute:
+      return VK_SHADER_STAGE_COMPUTE_BIT;
+  }
+  return VK_SHADER_STAGE_VERTEX_BIT;
+}
+
+constexpr auto ToVkShaderStageFlags(ShaderStage stage) -> VkShaderStageFlags
+{
+  return static_cast<VkShaderStageFlags>(ToVkShaderStage(stage));
+}
+
+constexpr auto GetNextShaderStage(ShaderStage stage) -> VkShaderStageFlags
+{
+  switch (stage) {
+    case ShaderStage::Vertex:
+      return VK_SHADER_STAGE_FRAGMENT_BIT;
+    case ShaderStage::Fragment:
+    case ShaderStage::Compute:
+      return 0;
+  }
+  return 0;
+}
+
+constexpr auto ToVkDescriptorType(DescriptorType type) -> VkDescriptorType
+{
+  switch (type) {
+    case DescriptorType::UniformBuffer:
+      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    case DescriptorType::StorageBuffer:
+      return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    case DescriptorType::Sampler:
+      return VK_DESCRIPTOR_TYPE_SAMPLER;
+    case DescriptorType::SampledImage:
+      return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    case DescriptorType::CombinedImageSampler:
+      return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  }
+  return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+}
+
+// Error checking utilities
 
 constexpr auto IsSuccess(VkResult result) -> bool
 {

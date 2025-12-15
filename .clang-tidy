@@ -13,9 +13,11 @@ Checks: "*,\
   -bugprone-easily-swappable-parameters,\
   -cppcoreguidelines-non-private-member-variables-in-classes,\
   -cppcoreguidelines-pro-type-union-access,\
+  -cppcoreguidelines-pro-bounds-constant-array-index,\
   -cppcoreguidelines-pro-type-reinterpret-cast,\
   -hicpp-signed-bitwise,\
   -modernize-use-nodiscard,\
+  -performance-no-int-to-ptr,\
   -misc-no-recursion,\
   -misc-include-cleaner,\
   -misc-use-anonymous-namespace,\
@@ -137,7 +139,7 @@ CheckOptions:
   - key: "readability-identifier-naming.ProtectedMemberPrefix"
     value: "m_"
   - key: "readability-identifier-naming.ProtectedMethodCase"
-    value: "lower_case"
+    value: "CamelCase"
   - key: "readability-identifier-naming.PublicMemberCase"
     value: "CamelCase"
   - key: "readability-identifier-naming.PublicMethodCase"

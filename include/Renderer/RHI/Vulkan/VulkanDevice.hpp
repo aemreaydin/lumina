@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "Renderer/RHI/RHIDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
@@ -17,12 +17,6 @@ struct RendererConfig;
 class VulkanDevice final : public RHIDevice
 {
   static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-
-  struct PresentInfo
-  {
-    vk::Semaphore PresentSemaphore;
-    vk::Fence PresentFence;
-  };
 
 public:
   VulkanDevice() = default;
@@ -39,8 +33,37 @@ public:
   void BeginFrame() override;
   void EndFrame() override;
   void Present() override;
+  void WaitIdle() override;
 
   [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
+
+  [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
+      -> std::unique_ptr<RHIBuffer> override;
+  [[nodiscard]] auto CreateShaderModule(const ShaderModuleDesc& desc)
+      -> std::unique_ptr<RHIShaderModule> override;
+  [[nodiscard]] auto CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
+      -> std::unique_ptr<RHIGraphicsPipeline> override;
+  [[nodiscard]] auto CreateDescriptorSetLayout(
+      const DescriptorSetLayoutDesc& desc)
+      -> std::shared_ptr<RHIDescriptorSetLayout> override;
+  [[nodiscard]] auto CreateDescriptorSet(
+      const std::shared_ptr<RHIDescriptorSetLayout>& layout)
+      -> std::unique_ptr<RHIDescriptorSet> override;
+  [[nodiscard]] auto CreatePipelineLayout(const PipelineLayoutDesc& desc)
+      -> std::shared_ptr<RHIPipelineLayout> override;
+
+  void BindShaders(const RHIShaderModule* vertex_shader,
+                   const RHIShaderModule* fragment_shader) override;
+  void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
+  void SetVertexInput(const VertexInputLayout& layout) override;
+  void SetPrimitiveTopology(PrimitiveTopology topology) override;
+  void BindDescriptorSet(uint32_t set_index,
+                         const RHIDescriptorSet& descriptor_set,
+                         const RHIPipelineLayout& layout) override;
+  void Draw(uint32_t vertex_count,
+            uint32_t instance_count,
+            uint32_t first_vertex,
+            uint32_t first_instance) override;
 
   [[nodiscard]] auto GetVkInstance() const -> VkInstance { return m_Instance; }
 
@@ -78,6 +101,7 @@ private:
   void create_logical_device(VkSurfaceKHR surface);
   void setup_debug_messenger();
   [[nodiscard]] auto create_command_pool() -> VkCommandPool;
+  void create_descriptor_pool();
 
   void setup_frame_data();
 
@@ -90,6 +114,7 @@ private:
   VkQueue m_PresentQueue {VK_NULL_HANDLE};
   uint32_t m_GraphicsQueueFamily {0};
   uint32_t m_PresentQueueFamily {0};
+  VkDescriptorPool m_DescriptorPool {VK_NULL_HANDLE};
 
   std::unique_ptr<VulkanSwapchain> m_Swapchain;
   GLFWwindow* m_Window {nullptr};

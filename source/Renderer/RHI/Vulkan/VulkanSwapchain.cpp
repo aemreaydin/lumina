@@ -6,7 +6,6 @@
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
@@ -70,12 +69,7 @@ void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
   m_Width = width;
   m_Height = height;
 
-  if (auto result = VkUtils::Check(vkDeviceWaitIdle(m_Device.GetVkDevice()));
-      !result)
-  {
-    throw std::runtime_error(std::format("Failed to waitIdle: {}",
-                                         VkUtils::ToString(result.error())));
-  }
+  m_Device.WaitIdle();
 
   cleanup_swapchain();
   create_swapchain();

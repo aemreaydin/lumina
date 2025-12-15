@@ -27,8 +27,37 @@ public:
   void BeginFrame() override;
   void EndFrame() override;
   void Present() override;
+  void WaitIdle() override;
 
   [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
+
+  [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
+      -> std::unique_ptr<RHIBuffer> override;
+  [[nodiscard]] auto CreateShaderModule(const ShaderModuleDesc& desc)
+      -> std::unique_ptr<RHIShaderModule> override;
+  [[nodiscard]] auto CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
+      -> std::unique_ptr<RHIGraphicsPipeline> override;
+  [[nodiscard]] auto CreateDescriptorSetLayout(
+      const DescriptorSetLayoutDesc& desc)
+      -> std::shared_ptr<RHIDescriptorSetLayout> override;
+  [[nodiscard]] auto CreateDescriptorSet(
+      const std::shared_ptr<RHIDescriptorSetLayout>& layout)
+      -> std::unique_ptr<RHIDescriptorSet> override;
+  [[nodiscard]] auto CreatePipelineLayout(const PipelineLayoutDesc& desc)
+      -> std::shared_ptr<RHIPipelineLayout> override;
+
+  void BindShaders(const RHIShaderModule* vertex_shader,
+                   const RHIShaderModule* fragment_shader) override;
+  void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
+  void SetVertexInput(const VertexInputLayout& layout) override;
+  void SetPrimitiveTopology(PrimitiveTopology topology) override;
+  void BindDescriptorSet(uint32_t set_index,
+                         const RHIDescriptorSet& descriptor_set,
+                         const RHIPipelineLayout& layout) override;
+  void Draw(uint32_t vertex_count,
+            uint32_t instance_count,
+            uint32_t first_vertex,
+            uint32_t first_instance) override;
 
 private:
   std::unique_ptr<OpenGLSwapchain> m_Swapchain;

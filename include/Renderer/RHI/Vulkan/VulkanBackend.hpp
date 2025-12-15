@@ -1,14 +1,14 @@
 #ifndef RENDERER_RHI_VULKAN_VULKANBACKEND_HPP
 #define RENDERER_RHI_VULKAN_VULKANBACKEND_HPP
 
-#include <vulkan/vulkan.hpp>
+#include <volk.h>
 
 // Vulkan backend type traits
 struct VulkanBackend
 {
-  using CommandBufferHandle = vk::CommandBuffer;
-  using PipelineHandle = vk::Pipeline;
-  using BufferHandle = vk::Buffer;
+  using CommandBufferHandle = VkCommandBuffer;
+  using PipelineHandle = VkPipeline;
+  using BufferHandle = VkBuffer;
 };
 
 #endif

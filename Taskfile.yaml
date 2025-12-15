@@ -9,11 +9,10 @@ tasks:
     desc: Configure CMake project
     sources:
       - CMakeLists.txt
-      - src/**/*.cpp
-      - src/**/*.hpp
-      - src/**/*.h
+      - source/**/*.cpp
+      - source/**/*.hpp
     generates:
-      - build/CMakeCache.txt
+      - build/dev/CMakeCache.txt
     cmds:
       - cmake --preset=dev
 
@@ -21,14 +20,12 @@ tasks:
     desc: Build the engine
     deps: [configure]
     sources:
-      - src/**/*.cpp
-      - src/**/*.hpp
-      - src/**/*.h
-      - sandbox/**/*.cpp
-      - sandbox/**/*.hpp
-      - sandbox/**/*.h
+      - source/**/*.cpp
+      - source/**/*.hpp
+      - example/**/*.cpp
+      - example/**/*.hpp
     generates:
-      - build/bin/Sandbox{{exeExt}}
+      - build/dev/example/sandbox{{exeExt}}
     cmds:
       - cmake --build --preset=dev
 
@@ -38,9 +35,19 @@ tasks:
       - task: clean
       - task: build
 
+  assets:
+    desc: Copy assets to build directory
+    sources:
+      - example/shaders/**/*
+      - config.toml
+    cmds:
+      - mkdir -p build/dev/example/shaders
+      - cp -r example/shaders/* build/dev/example/shaders/
+      - cp config.toml build/dev/example/
+
   run:
     desc: Run the Sandbox application
-    deps: [build]
+    deps: [build, assets]
     dir: build/dev/example
     cmds:
       - ./sandbox{{exeExt}}

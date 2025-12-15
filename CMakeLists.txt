@@ -35,6 +35,14 @@ add_library(
     source/Renderer/RHI/Vulkan/VulkanDevice.cpp
     source/Renderer/RHI/Vulkan/VulkanSwapchain.cpp
     source/Renderer/RHI/Vulkan/VulkanCommandBuffer.cpp
+    source/Renderer/RHI/Vulkan/VulkanBuffer.cpp
+    source/Renderer/RHI/Vulkan/VulkanShaderModule.cpp
+    source/Renderer/RHI/Vulkan/VulkanDescriptorSet.cpp
+    source/Renderer/RHI/Vulkan/VulkanPipelineLayout.cpp
+    source/Renderer/RHI/OpenGL/OpenGLBuffer.cpp
+    source/Renderer/RHI/OpenGL/OpenGLShaderModule.cpp
+    source/Renderer/RHI/OpenGL/OpenGLDescriptorSet.cpp
+    source/Renderer/RHI/OpenGL/OpenGLPipelineLayout.cpp
 )
 add_library(lumina::lumina ALIAS lumina_lumina)
 
@@ -84,8 +92,8 @@ target_link_libraries(lumina_lumina PUBLIC glad::glad)
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC glfw)
 
-find_package(Vulkan REQUIRED)
-target_link_libraries(lumina_lumina PUBLIC Vulkan::Vulkan)
+find_package(volk CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC volk::volk volk::volk_headers)
 
 find_package(unofficial-vulkan-memory-allocator-hpp CONFIG REQUIRED)
 target_link_libraries(
@@ -95,6 +103,12 @@ target_link_libraries(
 
 find_package(tomlplusplus CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC tomlplusplus::tomlplusplus)
+
+find_package(glm CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC glm::glm)
+
+find_library(SLANG_LIBRARY slang REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC ${SLANG_LIBRARY})
 
 target_compile_definitions(
     lumina_lumina

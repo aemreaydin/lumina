@@ -1,0 +1,52 @@
+#include <stdexcept>
+
+#include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
+
+#include "Core/Logger.hpp"
+#include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
+#include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
+#include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
+
+VulkanPipelineLayout::VulkanPipelineLayout(const VulkanDevice& device,
+                                           const PipelineLayoutDesc& desc)
+    : m_Device(device)
+    , m_SetLayouts(desc.SetLayouts)
+{
+  std::vector<VkDescriptorSetLayout> vk_set_layouts;
+  vk_set_layouts.reserve(desc.SetLayouts.size());
+
+  for (const auto& layout : desc.SetLayouts) {
+    const auto* vk_layout =
+        dynamic_cast<const VulkanDescriptorSetLayout*>(layout.get());
+    if (vk_layout == nullptr) {
+      throw std::runtime_error(
+          "Invalid descriptor set layout for Vulkan pipeline layout");
+    }
+    vk_set_layouts.push_back(vk_layout->GetVkDescriptorSetLayout());
+  }
+
+  VkPipelineLayoutCreateInfo layout_info {};
+  layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layout_info.setLayoutCount = static_cast<uint32_t>(vk_set_layouts.size());
+  layout_info.pSetLayouts = vk_set_layouts.data();
+  layout_info.pushConstantRangeCount = 0;
+  layout_info.pPushConstantRanges = nullptr;
+
+  if (auto result = VkUtils::Check(vkCreatePipelineLayout(
+          m_Device.GetVkDevice(), &layout_info, nullptr, &m_PipelineLayout));
+      !result)
+  {
+    throw std::runtime_error("Failed to create Vulkan pipeline layout");
+  }
+
+  Logger::Trace("[Vulkan] Created pipeline layout with {} set layouts",
+                desc.SetLayouts.size());
+}
+
+VulkanPipelineLayout::~VulkanPipelineLayout()
+{
+  if (m_PipelineLayout != VK_NULL_HANDLE) {
+    vkDestroyPipelineLayout(m_Device.GetVkDevice(), m_PipelineLayout, nullptr);
+    Logger::Trace("[Vulkan] Destroyed pipeline layout");
+  }
+}

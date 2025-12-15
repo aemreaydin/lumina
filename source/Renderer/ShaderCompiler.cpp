@@ -44,6 +44,17 @@ static auto CompileStage(slang::ISession* session,
     throw std::runtime_error("slang link failed.");
   }
 
+  slang::ProgramLayout* program_layout = program->getLayout(0);
+  Slang::ComPtr<slang::IBlob> json;
+  program_layout->toJson(json.writeRef());
+
+  const auto entry_point_count = program_layout->getEntryPointCount();
+  Logger::Info("Entry Point Count: {}", entry_point_count);
+
+  slang::EntryPointLayout* entry_point_layout =
+      program_layout->getEntryPointByIndex(0);
+  Logger::Info("Entry Point Name: {}", entry_point_layout->getName());
+
   ComPtr<slang::IBlob> spirv_blob;
   linked_program->getEntryPointCode(
       0, 0, spirv_blob.writeRef(), diagnostics.writeRef());
@@ -71,8 +82,17 @@ auto ShaderCompiler::Compile(const std::string& shader_path) -> ShaderSources
       .profile = global_session->findProfile("glsl_460"),
       .forceGLSLScalarBufferLayout = true};
 
-  slang::SessionDesc const session_desc = {.targets = &target_desc,
-                                           .targetCount = 1};
+  // Preserve entry point names in SPIR-V output
+  slang::CompilerOptionEntry option {};
+  option.name = slang::CompilerOptionName::VulkanUseEntryPointName;
+  option.value.kind = slang::CompilerOptionValueKind::Int;
+  option.value.intValue0 = 1;
+
+  slang::SessionDesc const session_desc = {
+      .targets = &target_desc,
+      .targetCount = 1,
+      .compilerOptionEntries = &option,
+      .compilerOptionEntryCount = 1};
 
   ComPtr<slang::ISession> session;
   global_session->createSession(session_desc, session.writeRef());

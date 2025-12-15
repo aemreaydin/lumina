@@ -1,7 +1,7 @@
 #ifndef RENDERER_RHI_VULKAN_VULKANFRAME_HPP
 #define RENDERER_RHI_VULKAN_VULKANFRAME_HPP
 
-#include <vulkan/vulkan.h>
+#include <volk.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanBackend.hpp"

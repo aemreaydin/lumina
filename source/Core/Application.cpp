@@ -17,7 +17,7 @@ static void GLFWErrorCallback(int error, const char* description)
   Logger::Error("GLFW Error ({}): {}", error, description);
 }
 
-Application::Application()
+void Application::Init()
 {
   Logger::Init(ConfigLoader::LoadLoggerConfig("config.toml"));
   Logger::Info("Creating application");
@@ -29,18 +29,27 @@ Application::Application()
   m_Window = Window::Create();
   m_Window->SetEventCallback([this](void* event) -> void
                              { this->OnEvent(event); });
+  m_Window->SetRefreshCallback([this]() -> void { this->render_frame(); });
 
   m_RHIDevice = RHIDevice::Create(m_RendererConfig);
 
   m_RHIDevice->Init(m_RendererConfig, m_Window->GetNativeWindow());
   m_RHIDevice->CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 
+  OnInit();
+
   Logger::Info("Application created successfully");
 }
 
-Application::~Application()
+void Application::Destroy()
 {
   Logger::Info("Shutting down application");
+
+  if (m_RHIDevice) {
+    m_RHIDevice->WaitIdle();
+  }
+
+  OnDestroy();
 
   if (m_RHIDevice) {
     m_RHIDevice->Destroy();
@@ -83,29 +92,33 @@ void Application::OnEvent([[maybe_unused]] void* event)
   Logger::Info("Event received: {}", m_Window->GetWidth());
 }
 
+void Application::render_frame()
+{
+  const auto current_frame_time = static_cast<float>(glfwGetTime());
+  const auto delta_time = current_frame_time - m_LastFrameTime;
+  m_LastFrameTime = current_frame_time;
+
+  // Begin rendering
+  m_RHIDevice->BeginFrame();
+
+  OnRender(delta_time);
+
+  // End rendering
+  m_RHIDevice->EndFrame();
+
+  // Present to screen
+  m_RHIDevice->Present();
+}
+
 void Application::Run()
 {
   Logger::Info("Starting application main loop");
 
   while (m_Running) {
-    const auto current_frame_time = static_cast<float>(glfwGetTime());
-    const auto delta_time = current_frame_time - m_LastFrameTime;
-    m_LastFrameTime = current_frame_time;
-    Logger::Trace("delta_time: {}", delta_time);
-
-    // Poll events
+    // Poll events (may block on X11 during resize, refresh callback handles rendering)
     m_Window->OnUpdate();
 
-    // Begin rendering
-    m_RHIDevice->BeginFrame();
-
-    // Rendering commands go here (currently just clears to red via BeginFrame)
-
-    // End rendering
-    m_RHIDevice->EndFrame();
-
-    // Present to screen
-    m_RHIDevice->Present();
+    render_frame();
 
     auto* native_win = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
     if (glfwWindowShouldClose(native_win) != 0) {

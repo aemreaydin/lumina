@@ -24,6 +24,7 @@ struct WindowProps
   WindowDimensions Dimensions;
   bool VSync;
   std::function<void(void*)> EventCallback;
+  std::function<void()> RefreshCallback;
 
   explicit WindowProps(std::string title = "Lumina Engine",
                        WindowDimensions dimensions = WindowDimensions {},
@@ -52,6 +53,7 @@ public:
   [[nodiscard]] virtual auto GetHeight() const -> uint32_t = 0;
 
   virtual void SetEventCallback(const std::function<void(void*)>& callback) = 0;
+  virtual void SetRefreshCallback(const std::function<void()>& callback) = 0;
   virtual void SetVSync(bool enabled) = 0;
   [[nodiscard]] virtual auto IsVSync() const -> bool = 0;
 

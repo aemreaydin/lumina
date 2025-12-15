@@ -16,6 +16,7 @@ using ShaderSources = std::map<ShaderType, std::vector<uint32_t>>;
 
 class ShaderCompiler
 {
+public:
   static auto Compile(const std::string& shader_path) -> ShaderSources;
 };
 

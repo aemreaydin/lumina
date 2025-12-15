@@ -5,16 +5,22 @@
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
+#include "Renderer/RHI/RHIBuffer.hpp"
+#include "Renderer/RHI/RHIDescriptorSet.hpp"
+#include "Renderer/RHI/RHIPipeline.hpp"
+#include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/RHI/RenderPassInfo.hpp"
+#include "Renderer/RHI/Vulkan/VulkanBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
+#include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
+#include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
+#include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 /*
- * TODO: Use volk for Vulkan function loading instead of manual loading
  * TODO: There should be checks in place for extension availability and
  * alternatives need to be implemented.
  */
@@ -56,6 +62,12 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
 
   m_Window = static_cast<GLFWwindow*>(window);
   m_ValidationEnabled = config.EnableValidation;
+
+  // Initialize volk
+  if (auto result = VkUtils::Check(volkInitialize()); !result) {
+    throw std::runtime_error(std::format("Failed to initialize volk: {}",
+                                         VkUtils::ToString(result.error())));
+  }
 
   VkApplicationInfo app_info = {};
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -120,6 +132,9 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
                                          VkUtils::ToString(result.error())));
   }
 
+  // Load instance-level functions
+  volkLoadInstance(m_Instance);
+
   // Set up debug messenger
   if (m_ValidationEnabled) {
     setup_debug_messenger();
@@ -141,6 +156,9 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
 
   // Create logical device
   create_logical_device(m_Surface);
+
+  // Create descriptor pool
+  create_descriptor_pool();
 
   Logger::Info("Created synchronization primitives for {} frames in flight",
                MAX_FRAMES_IN_FLIGHT);
@@ -182,12 +200,7 @@ void VulkanDevice::Destroy()
     return;
   }
 
-  if (m_Device != VK_NULL_HANDLE) {
-    if (auto result = VkUtils::Check(vkDeviceWaitIdle(m_Device)); !result) {
-      throw std::runtime_error(std::format("Failed to wait device idle: {}",
-                                           VkUtils::ToString(result.error())));
-    }
-  }
+  WaitIdle();
 
   for (const auto& frame : m_FrameData) {
     vkDestroySemaphore(m_Device, frame.ImageAvailableSemaphore, nullptr);
@@ -201,6 +214,10 @@ void VulkanDevice::Destroy()
 
   m_Swapchain.reset();
 
+  if (m_DescriptorPool != VK_NULL_HANDLE) {
+    vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
+  }
+
   if (m_Device != VK_NULL_HANDLE) {
     vkDestroyDevice(m_Device, nullptr);
   }
@@ -210,14 +227,7 @@ void VulkanDevice::Destroy()
   }
 
   if (m_ValidationEnabled && m_DebugMessenger != VK_NULL_HANDLE) {
-    auto vk_destroy_debug_utils_messenger_ext =
-        reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-            vkGetInstanceProcAddr(m_Instance,
-                                  "vkDestroyDebugUtilsMessengerEXT"));
-    if (vk_destroy_debug_utils_messenger_ext != nullptr) {
-      vk_destroy_debug_utils_messenger_ext(
-          m_Instance, m_DebugMessenger, nullptr);
-    }
+    vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger, nullptr);
   }
 
   if (m_Instance != VK_NULL_HANDLE) {
@@ -336,6 +346,13 @@ void VulkanDevice::Present()
 auto VulkanDevice::GetSwapchain() -> RHISwapchain*
 {
   return m_Swapchain.get();
+}
+
+void VulkanDevice::WaitIdle()
+{
+  if (m_Device != VK_NULL_HANDLE) {
+    vkDeviceWaitIdle(m_Device);
+  }
 }
 
 void VulkanDevice::pick_physical_device(VkSurfaceKHR surface)
@@ -459,14 +476,22 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
 
   const VkPhysicalDeviceFeatures device_features = {};
 
+  // Enable shader object extension features
+  VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_features = {};
+  shader_object_features.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
+  shader_object_features.shaderObject = VK_TRUE;
+
   VkPhysicalDeviceVulkan13Features vulkan13_features = {};
   vulkan13_features.sType =
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  vulkan13_features.pNext = &shader_object_features;
   vulkan13_features.dynamicRendering = VK_TRUE;
   vulkan13_features.synchronization2 = VK_TRUE;
 
   const std::vector<const char*> device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
   };
 
   VkDeviceCreateInfo create_info = {};
@@ -487,6 +512,9 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
                                          VkUtils::ToString(result.error())));
   }
 
+  // Load device-level functions
+  volkLoadDevice(m_Device);
+
   vkGetDeviceQueue(m_Device, m_GraphicsQueueFamily, 0, &m_GraphicsQueue);
   vkGetDeviceQueue(m_Device, m_PresentQueueFamily, 0, &m_PresentQueue);
 }
@@ -504,14 +532,7 @@ void VulkanDevice::setup_debug_messenger()
       | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
   create_info.pfnUserCallback = DebugCallback;
 
-  auto vk_create_debug_utils_messenger_ext =
-      reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-          vkGetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT"));
-  if (vk_create_debug_utils_messenger_ext == nullptr) {
-    throw std::runtime_error("Failed to load vkCreateDebugUtilsMessengerEXT");
-  }
-
-  if (auto result = VkUtils::Check(vk_create_debug_utils_messenger_ext(
+  if (auto result = VkUtils::Check(vkCreateDebugUtilsMessengerEXT(
           m_Instance, &create_info, nullptr, &m_DebugMessenger));
       !result)
   {
@@ -598,4 +619,136 @@ void VulkanDevice::setup_frame_data()
     frame_data.CommandPool = create_command_pool();
     frame_data.CommandBuffer.Allocate(*this, frame_data.CommandPool);
   }
+}
+
+auto VulkanDevice::CreateBuffer(const BufferDesc& desc)
+    -> std::unique_ptr<RHIBuffer>
+{
+  return std::make_unique<VulkanBuffer>(*this, desc);
+}
+
+auto VulkanDevice::CreateShaderModule(const ShaderModuleDesc& desc)
+    -> std::unique_ptr<RHIShaderModule>
+{
+  return std::make_unique<VulkanShaderModule>(*this, desc);
+}
+
+auto VulkanDevice::CreateGraphicsPipeline(
+    [[maybe_unused]] const GraphicsPipelineDesc& desc)
+    -> std::unique_ptr<RHIGraphicsPipeline>
+{
+  // With shader objects, we don't need traditional pipelines
+  // TODO: Implement fallback VkPipeline for devices without
+  // VK_EXT_shader_object
+  return nullptr;
+}
+
+void VulkanDevice::BindShaders(const RHIShaderModule* vertex_shader,
+                               const RHIShaderModule* fragment_shader)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.BindShaders(
+      dynamic_cast<const VulkanShaderModule*>(vertex_shader),
+      dynamic_cast<const VulkanShaderModule*>(fragment_shader));
+}
+
+void VulkanDevice::BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.BindVertexBuffer(
+      dynamic_cast<const VulkanBuffer&>(buffer), binding);
+}
+
+void VulkanDevice::SetVertexInput(const VertexInputLayout& layout)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.SetVertexInput(layout);
+}
+
+void VulkanDevice::SetPrimitiveTopology(PrimitiveTopology topology)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.SetPrimitiveTopology(topology);
+}
+
+void VulkanDevice::Draw(uint32_t vertex_count,
+                        uint32_t instance_count,
+                        uint32_t first_vertex,
+                        uint32_t first_instance)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.Draw(
+      vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void VulkanDevice::create_descriptor_pool()
+{
+  // Create a general-purpose descriptor pool
+  // These limits can be adjusted based on actual needs
+  const uint32_t pool_size = 100;
+  std::array<VkDescriptorPoolSize, 4> pool_sizes = {{
+      {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = pool_size},
+      {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = pool_size},
+      {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+       .descriptorCount = pool_size},
+      {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = pool_size},
+  }};
+
+  VkDescriptorPoolCreateInfo pool_info {};
+  pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+  pool_info.pPoolSizes = pool_sizes.data();
+  pool_info.maxSets = pool_size;
+  pool_info.flags = 0;
+
+  if (auto result = VkUtils::Check(vkCreateDescriptorPool(
+          m_Device, &pool_info, nullptr, &m_DescriptorPool));
+      !result)
+  {
+    throw std::runtime_error(std::format("Failed to create descriptor pool: {}",
+                                         VkUtils::ToString(result.error())));
+  }
+
+  Logger::Trace("[Vulkan] Created descriptor pool");
+}
+
+auto VulkanDevice::CreateDescriptorSetLayout(
+    const DescriptorSetLayoutDesc& desc)
+    -> std::shared_ptr<RHIDescriptorSetLayout>
+{
+  return std::make_shared<VulkanDescriptorSetLayout>(*this, desc);
+}
+
+auto VulkanDevice::CreateDescriptorSet(
+    const std::shared_ptr<RHIDescriptorSetLayout>& layout)
+    -> std::unique_ptr<RHIDescriptorSet>
+{
+  return std::make_unique<VulkanDescriptorSet>(*this, m_DescriptorPool, layout);
+}
+
+auto VulkanDevice::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+    -> std::shared_ptr<RHIPipelineLayout>
+{
+  return std::make_shared<VulkanPipelineLayout>(*this, desc);
+}
+
+void VulkanDevice::BindDescriptorSet(uint32_t set_index,
+                                     const RHIDescriptorSet& descriptor_set,
+                                     const RHIPipelineLayout& layout)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  const auto& vk_descriptor_set =
+      dynamic_cast<const VulkanDescriptorSet&>(descriptor_set);
+  const auto& vk_layout = dynamic_cast<const VulkanPipelineLayout&>(layout);
+
+  VkDescriptorSet vk_set = vk_descriptor_set.GetVkDescriptorSet();
+
+  vkCmdBindDescriptorSets(frame_data.CommandBuffer.GetHandle(),
+                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          vk_layout.GetVkPipelineLayout(),
+                          set_index,
+                          1,
+                          &vk_set,
+                          0,
+                          nullptr);
 }

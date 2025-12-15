@@ -2,8 +2,12 @@
 
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Core/Logger.hpp"
+#include "Renderer/RHI/Vulkan/VulkanBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
+#include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
@@ -212,4 +216,163 @@ void RHICommandBuffer<VulkanBackend>::ClearColor(
 auto RHICommandBuffer<VulkanBackend>::GetHandle() -> VkCommandBuffer
 {
   return m_CommandBuffer;
+}
+
+void RHICommandBuffer<VulkanBackend>::BindShaders(
+    const VulkanShaderModule* vertex_shader,
+    const VulkanShaderModule* fragment_shader)
+{
+  std::array<VkShaderStageFlagBits, 2> stages = {VK_SHADER_STAGE_VERTEX_BIT,
+                                                 VK_SHADER_STAGE_FRAGMENT_BIT};
+  std::array<VkShaderEXT, 2> shaders = {
+      vertex_shader != nullptr ? vertex_shader->GetVkShaderEXT()
+                               : VK_NULL_HANDLE,
+      fragment_shader != nullptr ? fragment_shader->GetVkShaderEXT()
+                                 : VK_NULL_HANDLE};
+
+  vkCmdBindShadersEXT(m_CommandBuffer, 2, stages.data(), shaders.data());
+
+  const auto sample_mask = 0xFFFFFFFF;
+  vkCmdSetSampleMaskEXT(m_CommandBuffer, VK_SAMPLE_COUNT_1_BIT, &sample_mask);
+  vkCmdSetRasterizationSamplesEXT(m_CommandBuffer, VK_SAMPLE_COUNT_1_BIT);
+  vkCmdSetRasterizerDiscardEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetAlphaToCoverageEnableEXT(m_CommandBuffer, VK_FALSE);
+  vkCmdSetPolygonModeEXT(m_CommandBuffer, VK_POLYGON_MODE_FILL);
+  vkCmdSetCullMode(m_CommandBuffer, VK_CULL_MODE_NONE);
+  vkCmdSetFrontFace(m_CommandBuffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+  vkCmdSetDepthTestEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetDepthWriteEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetDepthBiasEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetStencilTestEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetPrimitiveRestartEnable(m_CommandBuffer, VK_FALSE);
+
+  const VkViewport viewport {
+      .x = 0,
+      .y = static_cast<float>(m_CurrentRenderPass.Height),
+      .width = static_cast<float>(m_CurrentRenderPass.Width),
+      .height = -static_cast<float>(m_CurrentRenderPass.Height),
+      .minDepth = 0.0F,
+      .maxDepth = 1.0F,
+  };
+  vkCmdSetViewportWithCount(m_CommandBuffer, 1, &viewport);
+
+  const VkRect2D scissor {
+      .offset = VkOffset2D {.x = 0, .y = 0},
+      .extent = VkExtent2D {.width = m_CurrentRenderPass.Width,
+                            .height = m_CurrentRenderPass.Height},
+  };
+  vkCmdSetScissorWithCount(m_CommandBuffer, 1, &scissor);
+
+  // Color blend state
+  VkColorBlendEquationEXT color_blend_equation {};
+  color_blend_equation.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+  color_blend_equation.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+  color_blend_equation.colorBlendOp = VK_BLEND_OP_ADD;
+  color_blend_equation.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+  color_blend_equation.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+  color_blend_equation.alphaBlendOp = VK_BLEND_OP_ADD;
+  vkCmdSetColorBlendEquationEXT(m_CommandBuffer, 0, 1, &color_blend_equation);
+
+  const VkBool32 color_blend_enable = VK_FALSE;
+  vkCmdSetColorBlendEnableEXT(m_CommandBuffer, 0, 1, &color_blend_enable);
+
+  const VkColorComponentFlags color_write_mask = VK_COLOR_COMPONENT_R_BIT
+      | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+      | VK_COLOR_COMPONENT_A_BIT;
+  vkCmdSetColorWriteMaskEXT(m_CommandBuffer, 0, 1, &color_write_mask);
+
+  Logger::Trace("[Vulkan] Bound shaders");
+}
+
+void RHICommandBuffer<VulkanBackend>::BindVertexBuffer(
+    const VulkanBuffer& buffer, uint32_t binding)
+{
+  VkBuffer vk_buffer = buffer.GetVkBuffer();
+  const VkDeviceSize offset = 0;
+  vkCmdBindVertexBuffers(m_CommandBuffer, binding, 1, &vk_buffer, &offset);
+}
+
+void RHICommandBuffer<VulkanBackend>::SetVertexInput(
+    const VertexInputLayout& layout)
+{
+  std::vector<VkVertexInputBindingDescription2EXT> bindings;
+  std::vector<VkVertexInputAttributeDescription2EXT> attributes;
+
+  VkVertexInputBindingDescription2EXT binding {};
+  binding.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT;
+  binding.binding = 0;
+  binding.stride = layout.Stride;
+  binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+  binding.divisor = 1;
+  bindings.push_back(binding);
+
+  for (const auto& attr : layout.Attributes) {
+    VkVertexInputAttributeDescription2EXT vk_attr {};
+    vk_attr.sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT;
+    vk_attr.location = attr.Location;
+    vk_attr.binding = 0;
+    vk_attr.offset = attr.Offset;
+
+    switch (attr.Format) {
+      case VertexFormat::Float:
+        vk_attr.format = VK_FORMAT_R32_SFLOAT;
+        break;
+      case VertexFormat::Float2:
+        vk_attr.format = VK_FORMAT_R32G32_SFLOAT;
+        break;
+      case VertexFormat::Float3:
+        vk_attr.format = VK_FORMAT_R32G32B32_SFLOAT;
+        break;
+      case VertexFormat::Float4:
+        vk_attr.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        break;
+      default:
+        vk_attr.format = VK_FORMAT_R32G32B32_SFLOAT;
+        break;
+    }
+
+    attributes.push_back(vk_attr);
+  }
+
+  vkCmdSetVertexInputEXT(m_CommandBuffer,
+                         static_cast<uint32_t>(bindings.size()),
+                         bindings.data(),
+                         static_cast<uint32_t>(attributes.size()),
+                         attributes.data());
+}
+
+void RHICommandBuffer<VulkanBackend>::SetPrimitiveTopology(
+    PrimitiveTopology topology)
+{
+  VkPrimitiveTopology vk_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  switch (topology) {
+    case PrimitiveTopology::TriangleList:
+      vk_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+      break;
+    case PrimitiveTopology::TriangleStrip:
+      vk_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+      break;
+    case PrimitiveTopology::LineList:
+      vk_topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+      break;
+    case PrimitiveTopology::LineStrip:
+      vk_topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+      break;
+    case PrimitiveTopology::PointList:
+      vk_topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+      break;
+  }
+  vkCmdSetPrimitiveTopology(m_CommandBuffer, vk_topology);
+}
+
+void RHICommandBuffer<VulkanBackend>::Draw(uint32_t vertex_count,
+                                           uint32_t instance_count,
+                                           uint32_t first_vertex,
+                                           uint32_t first_instance)
+{
+  vkCmdDraw(m_CommandBuffer,
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance);
 }
