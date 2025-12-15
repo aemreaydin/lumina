@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include <SDL3/SDL.h>
 #include <volk.h>
 
 #include "Renderer/RHI/RHIDevice.hpp"
@@ -117,7 +118,7 @@ private:
   VkDescriptorPool m_DescriptorPool {VK_NULL_HANDLE};
 
   std::unique_ptr<VulkanSwapchain> m_Swapchain;
-  GLFWwindow* m_Window {nullptr};
+  SDL_Window* m_Window {nullptr};
   bool m_Initialized {false};
   bool m_ValidationEnabled {false};
 

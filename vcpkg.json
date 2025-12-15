@@ -5,11 +5,18 @@
     {
       "name": "glad",
       "version>=": "0.1.36",
-      "features": ["gl-api-46"]
+      "features": [
+        "gl-api-46"
+      ]
     },
     {
-      "name": "glfw3",
-      "version>=": "3.4#1"
+      "name": "sdl3",
+      "version>=": "3.2.28",
+      "features": [
+        "vulkan",
+        "wayland",
+        "x11"
+      ]
     },
     {
       "name": "spdlog",
@@ -48,5 +55,5 @@
       ]
     }
   },
-  "builtin-baseline": "d7112d1a4fb50410d3639f5f586972591d848beb"
+  "builtin-baseline": "594ad8871e1e8e45f8e626c015fd611163430207"
 }

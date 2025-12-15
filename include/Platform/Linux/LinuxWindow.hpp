@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <functional>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 
 #include "Core/Window.hpp"
 
@@ -41,11 +41,6 @@ public:
     m_WindowProps.EventCallback = callback;
   }
 
-  void SetRefreshCallback(const std::function<void()>& callback) override
-  {
-    m_WindowProps.RefreshCallback = callback;
-  }
-
   void SetVSync(bool enabled) override;
 
   [[nodiscard]] auto IsVSync() const -> bool override
@@ -53,8 +48,14 @@ public:
     return m_WindowProps.VSync;
   }
 
+  [[nodiscard]] auto ShouldClose() const -> bool override
+  {
+    return m_ShouldClose;
+  }
+
 private:
-  GLFWwindow* m_Window {nullptr};
+  SDL_Window* m_Window {nullptr};
+  bool m_ShouldClose {false};
 
   WindowProps m_WindowProps;
 };

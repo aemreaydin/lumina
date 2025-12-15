@@ -1,0 +1,19 @@
+[2025-12-15 13:29:58] [info] Logging system initialized
+[2025-12-15 13:29:58] [info] Creating application
+[2025-12-15 13:29:58] [info] Loaded config from: config.toml
+[2025-12-15 13:29:58] [info]   API: OpenGL
+[2025-12-15 13:29:58] [info]   Validation: enabled
+[2025-12-15 13:29:58] [info] Initializing GLFW
+[2025-12-15 13:29:58] [info] GLFW configured for OpenGL 4.6
+[2025-12-15 13:29:58] [info] GLFW initialized successfully
+[2025-12-15 13:29:58] [trace] Creating Linux window
+[2025-12-15 13:29:58] [info] Creating Linux window: Lumina Engine (1280x720)
+[2025-12-15 13:29:58] [info] Linux window created successfully
+[2025-12-15 13:29:58] [info] Initializing OpenGL device
+[2025-12-15 13:29:58] [info] OpenGL Version: 4.6
+[2025-12-15 13:29:58] [info] OpenGL device initialized successfully
+[2025-12-15 13:29:58] [info] OpenGL swapchain created
+[2025-12-15 13:29:58] [info] SandboxApp::OnInit - Creating triangle resources
+[2025-12-15 13:29:58] [trace] [OpenGL] Created descriptor set layout with 1 bindings
+[2025-12-15 13:29:58] [trace] [OpenGL] Created pipeline layout with 1 set layouts
+[2025-12-15 13:29:58] [critical] Failed to load slang module

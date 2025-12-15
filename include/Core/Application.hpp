@@ -39,14 +39,14 @@ protected:
   }
 
 private:
-  void init_glfw() const;
-  void render_frame();
+  static void InitSdl();
 
   RendererConfig m_RendererConfig;
   std::unique_ptr<Window> m_Window;
   std::unique_ptr<RHIDevice> m_RHIDevice;
   bool m_Running = true;
-  float m_LastFrameTime = 0.0F;
+  uint64_t m_StartTime {0};
+  uint64_t m_LastFrameTime {0};
 };
 
 auto CreateApplication() -> std::unique_ptr<Application>;

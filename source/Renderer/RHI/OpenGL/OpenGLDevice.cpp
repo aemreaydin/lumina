@@ -2,7 +2,6 @@
 
 #include "Renderer/RHI/OpenGL/OpenGLDevice.hpp"
 
-#include <GLFW/glfw3.h>
 #include <glad/glad.h>
 
 #include "Core/Logger.hpp"
@@ -17,6 +16,9 @@
 #include "Renderer/RHI/RenderPassInfo.hpp"
 #include "Renderer/RendererConfig.hpp"
 
+constexpr uint32_t OPENGL_VERSION_MAJOR = 4;
+constexpr uint32_t OPENGL_VERSION_MINOR = 6;
+
 void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
                         void* window)
 {
@@ -28,11 +30,27 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
     throw std::runtime_error("Window pointer is null");
   }
 
-  m_Window = static_cast<GLFWwindow*>(window);
+  m_Window = static_cast<SDL_Window*>(window);
   Logger::Info("Initializing OpenGL device");
 
+  // Set OpenGL attributes before context creation
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, OPENGL_VERSION_MAJOR);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, OPENGL_VERSION_MINOR);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+  // Create OpenGL context
+  m_GLContext = SDL_GL_CreateContext(m_Window);
+  if (m_GLContext == nullptr) {
+    Logger::Critical("Failed to create OpenGL context: {}", SDL_GetError());
+    throw std::runtime_error("SDL_GL_CreateContext failed");
+  }
+
   // Make context current
-  glfwMakeContextCurrent(m_Window);
+  if (!SDL_GL_MakeCurrent(m_Window, m_GLContext)) {
+    Logger::Critical("Failed to make OpenGL context current: {}",
+                     SDL_GetError());
+    throw std::runtime_error("SDL_GL_MakeCurrent failed");
+  }
 
   // Load OpenGL function pointers
   if (gladLoadGL() == 0) {
@@ -46,7 +64,7 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
   glEnable(GL_FRAMEBUFFER_SRGB);
 
   // Enable VSync by default
-  glfwSwapInterval(1);
+  SDL_GL_SetSwapInterval(1);
 
   // Create command buffer
   m_CommandBuffer = std::make_unique<RHICommandBuffer<OpenGLBackend>>();
@@ -75,6 +93,12 @@ void OpenGLDevice::Destroy()
   Logger::Trace("OpenGL device shutting down");
   m_CommandBuffer.reset();
   m_Swapchain.reset();
+
+  if (m_GLContext != nullptr) {
+    SDL_GL_DestroyContext(m_GLContext);
+    m_GLContext = nullptr;
+  }
+
   m_Initialized = false;
 }
 
@@ -87,7 +111,7 @@ void OpenGLDevice::BeginFrame()
   // Check for resize
   int width = 0;
   int height = 0;
-  glfwGetFramebufferSize(m_Window, &width, &height);
+  SDL_GetWindowSizeInPixels(m_Window, &width, &height);
   if (static_cast<uint32_t>(width) != m_Swapchain->GetWidth()
       || static_cast<uint32_t>(height) != m_Swapchain->GetHeight())
   {
@@ -120,7 +144,7 @@ void OpenGLDevice::EndFrame()
 void OpenGLDevice::Present()
 {
   if (m_Window != nullptr) {
-    glfwSwapBuffers(m_Window);
+    SDL_GL_SwapWindow(m_Window);
   }
 }
 
@@ -187,7 +211,8 @@ void OpenGLDevice::Draw(uint32_t vertex_count,
       vertex_count, instance_count, first_vertex, first_instance);
 }
 
-auto OpenGLDevice::CreateDescriptorSetLayout(const DescriptorSetLayoutDesc& desc)
+auto OpenGLDevice::CreateDescriptorSetLayout(
+    const DescriptorSetLayoutDesc& desc)
     -> std::shared_ptr<RHIDescriptorSetLayout>
 {
   return std::make_shared<OpenGLDescriptorSetLayout>(desc);

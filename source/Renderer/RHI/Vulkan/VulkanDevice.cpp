@@ -4,7 +4,7 @@
 
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_vulkan.h>
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RHIBuffer.hpp"
@@ -60,7 +60,7 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
     throw std::runtime_error("Window pointer is null");
   }
 
-  m_Window = static_cast<GLFWwindow*>(window);
+  m_Window = static_cast<SDL_Window*>(window);
   m_ValidationEnabled = config.EnableValidation;
 
   // Initialize volk
@@ -77,12 +77,12 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
   app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
   app_info.apiVersion = VK_API_VERSION_1_3;
 
-  uint32_t glfw_extension_count = 0;
-  const char** glfw_extensions =
-      glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+  // Get required Vulkan instance extensions from SDL
+  Uint32 sdl_extension_count = 0;
+  const char* const* sdl_extensions =
+      SDL_Vulkan_GetInstanceExtensions(&sdl_extension_count);
 
-  const std::span<const char*> extensions_view {glfw_extensions,
-                                                glfw_extension_count};
+  const std::span extensions_view {sdl_extensions, sdl_extension_count};
   std::vector<const char*> extensions(extensions_view.begin(),
                                       extensions_view.end());
 
@@ -142,14 +142,11 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
 
   Logger::Info("Vulkan instance created successfully");
 
-  // Create surface
-  VkSurfaceKHR surface_c = VK_NULL_HANDLE;
-  if (glfwCreateWindowSurface(m_Instance, m_Window, nullptr, &surface_c)
-      != VK_SUCCESS)
-  {
-    throw std::runtime_error("Failed to create window surface");
+  // Create surface using SDL
+  if (!SDL_Vulkan_CreateSurface(m_Window, m_Instance, nullptr, &m_Surface)) {
+    throw std::runtime_error(
+        std::format("Failed to create window surface: {}", SDL_GetError()));
   }
-  m_Surface = surface_c;
 
   // Pick physical device with surface support
   pick_physical_device(m_Surface);

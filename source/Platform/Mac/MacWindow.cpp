@@ -1,14 +1,13 @@
-#include <cassert>
-
 #include "Platform/Mac/MacWindow.hpp"
 
 #include "Core/Logger.hpp"
-#include "GLFW/glfw3.h"
 
 MacWindow::~MacWindow()
 {
   Logger::Trace("Destroying Mac window");
-  glfwDestroyWindow(m_Window);
+  if (m_Window != nullptr) {
+    SDL_DestroyWindow(m_Window);
+  }
 }
 
 void MacWindow::Init(WindowProps props)
@@ -19,84 +18,76 @@ void MacWindow::Init(WindowProps props)
                m_WindowProps.Dimensions.Width,
                m_WindowProps.Dimensions.Height);
 
-  m_Window = glfwCreateWindow(static_cast<int>(m_WindowProps.Dimensions.Width),
-                              static_cast<int>(m_WindowProps.Dimensions.Height),
-                              m_WindowProps.Title.c_str(),
-                              nullptr,
-                              nullptr);
-
-  if (m_Window == nullptr) {
-    const char* error {nullptr};
-    glfwGetError(&error);
-    Logger::Critical("Failed to create GLFW window: {}", error);
-    throw std::runtime_error("glfwCreateWindow failed.");
+  // Determine SDL window flags based on render API
+  SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+  if (m_WindowProps.API == RenderAPI::OpenGL) {
+    flags |= SDL_WINDOW_OPENGL;
+  } else if (m_WindowProps.API == RenderAPI::Vulkan) {
+    flags |= SDL_WINDOW_VULKAN;
   }
 
-  glfwSetWindowUserPointer(m_Window, &m_WindowProps);
+  m_Window =
+      SDL_CreateWindow(m_WindowProps.Title.c_str(),
+                       static_cast<int>(m_WindowProps.Dimensions.Width),
+                       static_cast<int>(m_WindowProps.Dimensions.Height),
+                       flags);
 
-  // Note: VSync will be set after OpenGL context is made current by RHIDevice
+  if (m_Window == nullptr) {
+    Logger::Critical("Failed to create SDL window: {}", SDL_GetError());
+    throw std::runtime_error("SDL_CreateWindow failed.");
+  }
 
-  glfwSetWindowSizeCallback(
-      m_Window,
-      [](GLFWwindow* window, int width, int height) -> void
-      {
-        WindowProps& wnd_props =
-            *static_cast<WindowProps*>(glfwGetWindowUserPointer(window));
-        wnd_props.Dimensions.Width = static_cast<uint32_t>(width);
-        wnd_props.Dimensions.Height = static_cast<uint32_t>(height);
-        Logger::Trace("Window resized: {}x{}", width, height);
-        // In the future: Dispatch WindowResizeEvent
-      });
-
-  glfwSetWindowCloseCallback(m_Window,
-                             []([[maybe_unused]] GLFWwindow* window) -> void
-                             {
-                               Logger::Info("Window close requested");
-                               // In the future: Dispatch WindowCloseEvent
-                             });
-
-  // Refresh callback for rendering during resize (X11 blocks in glfwPollEvents)
-  glfwSetWindowRefreshCallback(
-      m_Window,
-      [](GLFWwindow* window) -> void
-      {
-        WindowProps const& wnd_props =
-            *static_cast<WindowProps*>(glfwGetWindowUserPointer(window));
-        if (wnd_props.RefreshCallback) {
-          wnd_props.RefreshCallback();
-        }
-      });
-
-  glfwSetKeyCallback(
-      m_Window,
-      [](GLFWwindow* window,
-         [[maybe_unused]] int key,
-         [[maybe_unused]] int scancode,
-         [[maybe_unused]] int action,
-         [[maybe_unused]] int mods) -> void
-      {
-        WindowProps const& wnd_props =
-            *static_cast<WindowProps*>(glfwGetWindowUserPointer(window));
-        if (wnd_props.EventCallback) {
-          wnd_props.EventCallback(nullptr);
-        }
-      });
+  // Store WindowProps pointer for event handling
+  SDL_SetPointerProperty(SDL_GetWindowProperties(m_Window),
+                         "props",
+                         &m_WindowProps);
 
   Logger::Info("Mac window created successfully");
 }
 
 void MacWindow::SetVSync(bool enabled)
 {
-  if (enabled) {
-    glfwSwapInterval(1);
-  } else {
-    glfwSwapInterval(0);
-  }
+  // VSync is handled by OpenGL context (SDL_GL_SetSwapInterval)
+  // This will be called after context creation by OpenGLDevice
   m_WindowProps.VSync = enabled;
   Logger::Info("VSync {}", enabled ? "enabled" : "disabled");
 }
 
 void MacWindow::OnUpdate()
 {
-  glfwPollEvents();
+  SDL_Event event;
+  while (SDL_PollEvent(&event) != 0) {
+    switch (event.type) {
+      case SDL_EVENT_QUIT:
+        Logger::Info("Window close requested");
+        m_ShouldClose = true;
+        break;
+
+      case SDL_EVENT_WINDOW_RESIZED:
+        m_WindowProps.Dimensions.Width = static_cast<uint32_t>(event.window.data1);
+        m_WindowProps.Dimensions.Height = static_cast<uint32_t>(event.window.data2);
+        Logger::Trace("Window resized: {}x{}",
+                      m_WindowProps.Dimensions.Width,
+                      m_WindowProps.Dimensions.Height);
+        if (m_WindowProps.EventCallback) {
+          m_WindowProps.EventCallback(&event);
+        }
+        break;
+
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        Logger::Info("Window close requested");
+        m_ShouldClose = true;
+        break;
+
+      case SDL_EVENT_KEY_DOWN:
+      case SDL_EVENT_KEY_UP:
+        if (m_WindowProps.EventCallback) {
+          m_WindowProps.EventCallback(&event);
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
 }

@@ -3,12 +3,12 @@
 
 #include <vector>
 
+#include <SDL3/SDL.h>
 #include <volk.h>
 
 #include "Renderer/RHI/RHISwapchain.hpp"
 
 class VulkanDevice;
-struct GLFWwindow;
 
 class VulkanSwapchain final : public RHISwapchain
 {
@@ -17,7 +17,7 @@ public:
   VulkanSwapchain(VulkanSwapchain&&) = delete;
   auto operator=(const VulkanSwapchain&) -> VulkanSwapchain& = delete;
   auto operator=(VulkanSwapchain&&) -> VulkanSwapchain& = delete;
-  VulkanSwapchain(VulkanDevice& device, GLFWwindow* window);
+  VulkanSwapchain(VulkanDevice& device, SDL_Window* window);
   ~VulkanSwapchain() override;
 
   void AcquireNextImage(VkSemaphore image_available_semaphore);
@@ -53,7 +53,7 @@ private:
   void destroy_old_swapchain();
 
   VulkanDevice& m_Device;
-  GLFWwindow* m_Window {nullptr};
+  SDL_Window* m_Window {nullptr};
   VkSurfaceKHR m_Surface {VK_NULL_HANDLE};
   VkSwapchainKHR m_Swapchain {VK_NULL_HANDLE};
   VkSwapchainKHR m_OldSwapchain {VK_NULL_HANDLE};

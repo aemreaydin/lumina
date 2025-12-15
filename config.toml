@@ -6,7 +6,7 @@ level = "trace"
 
 [renderer]
 # Graphics API: "OpenGL" or "Vulkan"
-api = "OpenGL"
+api = "Vulkan"
 
 # Enable validation layers (useful for debugging)
 # OpenGL: Enables debug output

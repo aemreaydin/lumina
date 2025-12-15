@@ -5,20 +5,18 @@
 
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 
-#include <GLFW/glfw3.h>
-
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
-VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, GLFWwindow* window)
+VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, SDL_Window* window)
     : m_Device(device)
     , m_Window(window)
     , m_Surface(device.GetVkSurface())
 {
   int width = 0;
   int height = 0;
-  glfwGetFramebufferSize(m_Window, &width, &height);
+  SDL_GetWindowSizeInPixels(m_Window, &width, &height);
   m_Width = static_cast<uint32_t>(width);
   m_Height = static_cast<uint32_t>(height);
 

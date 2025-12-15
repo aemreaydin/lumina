@@ -1,0 +1,227 @@
+Package: vcpkg-cmake-config
+Version: 2024-05-23
+Architecture: x64-linux
+Multi-Arch: same
+Abi: ae813da36abf3a96dff1fce13eaffb4224e773760bff003e3a911d8dd9eac9fc
+Status: install ok installed
+
+Package: vcpkg-cmake
+Version: 2024-04-23
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 2c8de8aee7b9c9fcf1b190334ca777bbfdf585da337ba1fa1b6a9ff574bd1747
+Status: install ok installed
+
+Package: egl-registry
+Version: 2024-01-25
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 35329c80c329dca2d6f50db452122b9c4e25ca4e32c7a7723e652ade48e507d6
+Description: EGL API and Extension Registry
+Status: install ok installed
+
+Package: opengl-registry
+Version: 2024-02-10
+Port-Version: 1
+Depends: egl-registry
+Architecture: x64-linux
+Multi-Arch: same
+Abi: b444b004c9894507ff788d30685967868fb8c17382799bdd9c9686cc0b1d1653
+Description: OpenGL, OpenGL ES, and OpenGL ES-SC API and Extension Registry
+Status: install ok installed
+
+Package: glad
+Version: 0.1.36
+Depends: egl-registry, opengl-registry, vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 9c341fc07952eae03fd129c861730c3aff2514c62ae7914121e49077a45b718b
+Description: Multi-Language Vulkan/GL/GLES/EGL/GLX/WGL Loader-Generator based on the official specs.
+Default-Features: loader
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-10
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.0.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-11
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.1.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-12
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.2.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-13
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.3.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-14
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.4.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-15
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 1.5.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-20
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 2.0.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-21
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 2.1.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-30
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 3.0.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-31
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 3.1.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-32
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 3.2.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-33
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 3.3.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-40
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.0.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-41
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.1.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-42
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.2.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-43
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.3.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-44
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.4.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-45
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.5.
+Status: install ok installed
+
+Package: glad
+Feature: gl-api-46
+Architecture: x64-linux
+Multi-Arch: same
+Description: Imports extensions from OpenGL API specification version 4.6.
+Status: install ok installed
+
+Package: glad
+Feature: loader
+Architecture: x64-linux
+Multi-Arch: same
+Description: Generate loader logic.
+Status: install ok installed
+
+Package: glm
+Version: 1.0.1
+Port-Version: 3
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: e98bb51d2f7be1d4094505d9917cdc89bb4842ba7555cd0e24e8dedafb4880ad
+Description: OpenGL Mathematics (GLM)
+Status: install ok installed
+
+Package: zstd
+Version: 1.5.6
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 9639e0a5286a24a40503177d886fea2e84442e2596cc2ecb5160444872333cf2
+Description: Zstandard - Fast real-time compression algorithm
+Status: install ok installed
+
+Package: vcpkg-cmake-get-vars
+Version: 2024-09-22
+Depends: vcpkg-cmake
+Architecture: x64-linux
+Multi-Arch: same
+Abi: f1267e42b755bdfed499df0457ade920706d9c00dc5752ad6d7acee34d20f09f
+Status: install ok installed
+
+Package: vcpkg-tool-meson
+Version: 1.6.1
+Depends: vcpkg-cmake-get-vars
+Architecture: x64-linux
+Multi-Arch: same
+Abi: ed3c6b2fe6d123f887e16fdd88603196fe52809aff85f255093ef8447026c93b
+Description: Meson build system
+Status: install ok installed
+
+Package: lz4
+Version: 1.10.0
+Depends: vcpkg-cmake, vcpkg-cmake-config
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 85f3d77e9dd8afcf35d3b39a746e238933b15ccd0ed97888dd3482d8dba9ba21
+Description: Lossless compression algorithm, providing compression speed at 400 MB/s per core.
+Status: install ok installed
+

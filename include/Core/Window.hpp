@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 
+#include "Renderer/RendererConfig.hpp"
+
 class Event;
 
 constexpr uint32_t WIDTH = 1280;
@@ -23,15 +25,17 @@ struct WindowProps
   std::string Title;
   WindowDimensions Dimensions;
   bool VSync;
+  RenderAPI API {RenderAPI::OpenGL};
   std::function<void(void*)> EventCallback;
-  std::function<void()> RefreshCallback;
 
   explicit WindowProps(std::string title = "Lumina Engine",
                        WindowDimensions dimensions = WindowDimensions {},
-                       bool v_sync = false)
+                       bool v_sync = false,
+                       RenderAPI api = RenderAPI::OpenGL)
       : Title(std::move(title))
       , Dimensions(dimensions)
       , VSync(v_sync)
+      , API(api)
   {
   }
 };
@@ -53,9 +57,9 @@ public:
   [[nodiscard]] virtual auto GetHeight() const -> uint32_t = 0;
 
   virtual void SetEventCallback(const std::function<void(void*)>& callback) = 0;
-  virtual void SetRefreshCallback(const std::function<void()>& callback) = 0;
   virtual void SetVSync(bool enabled) = 0;
   [[nodiscard]] virtual auto IsVSync() const -> bool = 0;
+  [[nodiscard]] virtual auto ShouldClose() const -> bool = 0;
 
   [[nodiscard]] virtual auto GetNativeWindow() const -> void* = 0;
 

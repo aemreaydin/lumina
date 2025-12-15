@@ -2,20 +2,11 @@
 
 #include "Core/Application.hpp"
 
-#include <GLFW/glfw3.h>
-#include <glad/glad.h>
+#include <SDL3/SDL.h>
 
 #include "Core/ConfigLoader.hpp"
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
-
-constexpr int OPENGL_MAJOR_VER = 4;
-constexpr int OPENGL_MINOR_VER = 6;
-
-static void GLFWErrorCallback(int error, const char* description)
-{
-  Logger::Error("GLFW Error ({}): {}", error, description);
-}
 
 void Application::Init()
 {
@@ -24,17 +15,23 @@ void Application::Init()
 
   m_RendererConfig = ConfigLoader::LoadRendererConfig("config.toml");
 
-  init_glfw();
+  InitSdl();
 
-  m_Window = Window::Create();
+  // Create window with render API info
+  WindowProps props;
+  props.API = m_RendererConfig.API;
+  m_Window = Window::Create(props);
   m_Window->SetEventCallback([this](void* event) -> void
                              { this->OnEvent(event); });
-  m_Window->SetRefreshCallback([this]() -> void { this->render_frame(); });
 
   m_RHIDevice = RHIDevice::Create(m_RendererConfig);
 
   m_RHIDevice->Init(m_RendererConfig, m_Window->GetNativeWindow());
   m_RHIDevice->CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
+
+  // Initialize timing
+  m_StartTime = SDL_GetPerformanceCounter();
+  m_LastFrameTime = m_StartTime;
 
   OnInit();
 
@@ -55,36 +52,23 @@ void Application::Destroy()
     m_RHIDevice->Destroy();
   }
 
-  // Destroy window before terminating GLFW
+  // Destroy window before quitting SDL
   m_Window.reset();
 
-  glfwTerminate();
+  SDL_Quit();
   Logger::Info("Application shutdown complete");
 }
 
-void Application::init_glfw() const
+void Application::InitSdl()
 {
-  Logger::Info("Initializing GLFW");
+  Logger::Info("Initializing SDL3");
 
-  if (glfwInit() == GLFW_FALSE) {
-    Logger::Critical("Failed to initialize GLFW");
-    throw std::runtime_error("glfwInit failed.");
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    Logger::Critical("Failed to initialize SDL: {}", SDL_GetError());
+    throw std::runtime_error("SDL_Init failed.");
   }
 
-  glfwSetErrorCallback(GLFWErrorCallback);
-
-  if (m_RendererConfig.API == RenderAPI::OpenGL) {
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_MAJOR_VER);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_MINOR_VER);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    Logger::Info(
-        "GLFW configured for OpenGL {}.{}", OPENGL_MAJOR_VER, OPENGL_MINOR_VER);
-  } else if (m_RendererConfig.API == RenderAPI::Vulkan) {
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    Logger::Info("GLFW configured for Vulkan");
-  }
-
-  Logger::Info("GLFW initialized successfully");
+  Logger::Info("SDL3 initialized successfully");
 }
 
 void Application::OnEvent([[maybe_unused]] void* event)
@@ -92,38 +76,37 @@ void Application::OnEvent([[maybe_unused]] void* event)
   Logger::Info("Event received: {}", m_Window->GetWidth());
 }
 
-void Application::render_frame()
-{
-  const auto current_frame_time = static_cast<float>(glfwGetTime());
-  const auto delta_time = current_frame_time - m_LastFrameTime;
-  m_LastFrameTime = current_frame_time;
-
-  // Begin rendering
-  m_RHIDevice->BeginFrame();
-
-  OnRender(delta_time);
-
-  // End rendering
-  m_RHIDevice->EndFrame();
-
-  // Present to screen
-  m_RHIDevice->Present();
-}
-
 void Application::Run()
 {
   Logger::Info("Starting application main loop");
 
   while (m_Running) {
-    // Poll events (may block on X11 during resize, refresh callback handles rendering)
+    // Calculate delta time using SDL high-resolution timer
+    const auto current_time = SDL_GetPerformanceCounter();
+    const auto frequency = SDL_GetPerformanceFrequency();
+    const auto delta_time = static_cast<float>(current_time - m_LastFrameTime)
+        / static_cast<float>(frequency);
+    m_LastFrameTime = current_time;
+
+    // Poll events
     m_Window->OnUpdate();
 
-    render_frame();
-
-    auto* native_win = static_cast<GLFWwindow*>(m_Window->GetNativeWindow());
-    if (glfwWindowShouldClose(native_win) != 0) {
+    // Check for window close
+    if (m_Window->ShouldClose()) {
       Logger::Info("Main loop exiting");
       m_Running = false;
+      continue;
     }
+
+    // Begin rendering
+    m_RHIDevice->BeginFrame();
+
+    OnRender(delta_time);
+
+    // End rendering
+    m_RHIDevice->EndFrame();
+
+    // Present to screen
+    m_RHIDevice->Present();
   }
 }

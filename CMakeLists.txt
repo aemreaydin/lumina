@@ -25,7 +25,6 @@ add_library(
     source/Platform/Linux/LinuxWindow.cpp
     # source/Platform/Windows/WindowsWindow.cpp
     # Renderer
-    source/Renderer/OpenGLContext.cpp
     source/Renderer/ShaderCompiler.cpp
     # RHI
     source/Renderer/RHI/RHIDevice.cpp
@@ -89,8 +88,8 @@ target_link_libraries(lumina_lumina PUBLIC spdlog::spdlog_header_only)
 find_package(glad CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC glad::glad)
 
-find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(lumina_lumina PUBLIC glfw)
+find_package(SDL3 CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC SDL3::SDL3)
 
 find_package(volk CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC volk::volk volk::volk_headers)
@@ -102,6 +101,7 @@ target_link_libraries(
 )
 
 find_package(tomlplusplus CONFIG REQUIRED)
+
 target_link_libraries(lumina_lumina PUBLIC tomlplusplus::tomlplusplus)
 
 find_package(glm CONFIG REQUIRED)
@@ -112,9 +112,7 @@ target_link_libraries(lumina_lumina PUBLIC ${SLANG_LIBRARY})
 
 target_compile_definitions(
     lumina_lumina
-    PUBLIC
-        SPDLOG_USE_STD_FORMAT
-        GLFW_INCLUDE_NONE
+    PUBLIC SPDLOG_USE_STD_FORMAT
 )
 
 # ---- Install rules ----

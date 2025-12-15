@@ -3,6 +3,8 @@
 
 #include <memory>
 
+#include <SDL3/SDL.h>
+
 #include "Renderer/RHI/OpenGL/OpenGLBackend.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLCommandBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLSwapchain.hpp"
@@ -62,7 +64,8 @@ public:
 private:
   std::unique_ptr<OpenGLSwapchain> m_Swapchain;
   std::unique_ptr<RHICommandBuffer<OpenGLBackend>> m_CommandBuffer;
-  GLFWwindow* m_Window {nullptr};
+  SDL_Window* m_Window {nullptr};
+  SDL_GLContext m_GLContext {nullptr};
   bool m_Initialized {false};
 };
 
