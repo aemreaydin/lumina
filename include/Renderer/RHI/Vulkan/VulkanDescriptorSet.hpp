@@ -58,6 +58,10 @@ public:
                    size_t offset,
                    size_t range) override;
 
+  void WriteCombinedImageSampler(uint32_t binding,
+                                 RHITexture* texture,
+                                 RHISampler* sampler) override;
+
   [[nodiscard]] auto GetVkDescriptorSet() const -> VkDescriptorSet
   {
     return m_DescriptorSet;

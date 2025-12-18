@@ -41,6 +41,10 @@
     {
       "name": "glm",
       "version>=": "1.0.1"
+    },
+    {
+      "name": "stb",
+      "version>=": "2024-07-29#1"
     }
   ],
   "default-features": [],

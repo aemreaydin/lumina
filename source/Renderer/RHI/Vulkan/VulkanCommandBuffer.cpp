@@ -5,6 +5,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
+#include "Renderer/RHI/RHICommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
@@ -292,6 +293,15 @@ void RHICommandBuffer<VulkanBackend>::BindVertexBuffer(
   vkCmdBindVertexBuffers(m_CommandBuffer, binding, 1, &vk_buffer, &offset);
 }
 
+void RHICommandBuffer<VulkanBackend>::BindIndexBuffer(
+    const VulkanBuffer& buffer)
+{
+  VkBuffer vk_buffer = buffer.GetVkBuffer();
+  const VkDeviceSize offset = 0;
+  vkCmdBindIndexBuffer(
+      m_CommandBuffer, vk_buffer, offset, VK_INDEX_TYPE_UINT32);
+}
+
 void RHICommandBuffer<VulkanBackend>::SetVertexInput(
     const VertexInputLayout& layout)
 {
@@ -375,4 +385,18 @@ void RHICommandBuffer<VulkanBackend>::Draw(uint32_t vertex_count,
             instance_count,
             first_vertex,
             first_instance);
+}
+
+void RHICommandBuffer<VulkanBackend>::DrawIndexed(uint32_t index_count,
+                                                  uint32_t instance_count,
+                                                  uint32_t first_index,
+                                                  uint32_t vertex_offset,
+                                                  uint32_t first_instance)
+{
+  vkCmdDrawIndexed(m_CommandBuffer,
+                   index_count,
+                   instance_count,
+                   first_index,
+                   static_cast<int>(vertex_offset),
+                   first_instance);
 }

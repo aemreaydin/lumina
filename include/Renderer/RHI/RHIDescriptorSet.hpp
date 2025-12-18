@@ -8,6 +8,8 @@
 #include "Renderer/RHI/RHIShaderModule.hpp"
 
 class RHIBuffer;
+class RHITexture;
+class RHISampler;
 
 enum class DescriptorType : uint8_t
 {
@@ -58,6 +60,10 @@ public:
                            RHIBuffer* buffer,
                            size_t offset,
                            size_t range) = 0;
+
+  virtual void WriteCombinedImageSampler(uint32_t binding,
+                                         RHITexture* texture,
+                                         RHISampler* sampler) = 0;
 
 protected:
   RHIDescriptorSet() = default;

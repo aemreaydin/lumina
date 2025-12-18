@@ -40,6 +40,10 @@ public:
 
   [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
       -> std::unique_ptr<RHIBuffer> override;
+  [[nodiscard]] auto CreateTexture(const TextureDesc& desc)
+      -> std::unique_ptr<RHITexture> override;
+  [[nodiscard]] auto CreateSampler(const SamplerDesc& desc)
+      -> std::unique_ptr<RHISampler> override;
   [[nodiscard]] auto CreateShaderModule(const ShaderModuleDesc& desc)
       -> std::unique_ptr<RHIShaderModule> override;
   [[nodiscard]] auto CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
@@ -56,6 +60,7 @@ public:
   void BindShaders(const RHIShaderModule* vertex_shader,
                    const RHIShaderModule* fragment_shader) override;
   void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
+  void BindIndexBuffer(const RHIBuffer& buffer) override;
   void SetVertexInput(const VertexInputLayout& layout) override;
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
   void BindDescriptorSet(uint32_t set_index,
@@ -65,6 +70,10 @@ public:
             uint32_t instance_count,
             uint32_t first_vertex,
             uint32_t first_instance) override;
+  void DrawIndexed(uint32_t index_count,
+                   uint32_t instance_count,
+                   uint32_t first_instance,
+                   const void* indices) override;
 
   [[nodiscard]] auto GetVkInstance() const -> VkInstance { return m_Instance; }
 

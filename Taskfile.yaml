@@ -38,11 +38,14 @@ tasks:
   assets:
     desc: Copy assets to build directory
     sources:
+      - example/assets/**/*
       - example/shaders/**/*
       - config.toml
     cmds:
       - mkdir -p build/dev/example/shaders
+      - mkdir -p build/dev/example/assets
       - cp -r example/shaders/* build/dev/example/shaders/
+      - cp -r example/assets/* build/dev/example/assets/
       - cp config.toml build/dev/example/
 
   run:

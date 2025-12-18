@@ -16,7 +16,9 @@
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
 #include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
+#include "Renderer/RHI/Vulkan/VulkanSampler.hpp"
 #include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
+#include "Renderer/RHI/Vulkan/VulkanTexture.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 #include "Renderer/RendererConfig.hpp"
 
@@ -624,6 +626,18 @@ auto VulkanDevice::CreateBuffer(const BufferDesc& desc)
   return std::make_unique<VulkanBuffer>(*this, desc);
 }
 
+auto VulkanDevice::CreateTexture(const TextureDesc& desc)
+    -> std::unique_ptr<RHITexture>
+{
+  return std::make_unique<VulkanTexture>(*this, desc);
+}
+
+auto VulkanDevice::CreateSampler(const SamplerDesc& desc)
+    -> std::unique_ptr<RHISampler>
+{
+  return std::make_unique<VulkanSampler>(*this, desc);
+}
+
 auto VulkanDevice::CreateShaderModule(const ShaderModuleDesc& desc)
     -> std::unique_ptr<RHIShaderModule>
 {
@@ -656,6 +670,13 @@ void VulkanDevice::BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding)
       dynamic_cast<const VulkanBuffer&>(buffer), binding);
 }
 
+void VulkanDevice::BindIndexBuffer(const RHIBuffer& buffer)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.BindIndexBuffer(
+      dynamic_cast<const VulkanBuffer&>(buffer));
+}
+
 void VulkanDevice::SetVertexInput(const VertexInputLayout& layout)
 {
   auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
@@ -676,6 +697,16 @@ void VulkanDevice::Draw(uint32_t vertex_count,
   auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
   frame_data.CommandBuffer.Draw(
       vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void VulkanDevice::DrawIndexed(uint32_t index_count,
+                               uint32_t instance_count,
+                               uint32_t first_instance,
+                               const void* /*indices*/)
+{
+  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
+  frame_data.CommandBuffer.DrawIndexed(
+      index_count, instance_count, 0, 0, first_instance);
 }
 
 void VulkanDevice::create_descriptor_pool()

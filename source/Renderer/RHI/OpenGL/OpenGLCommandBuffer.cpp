@@ -135,6 +135,12 @@ void RHICommandBuffer<OpenGLBackend>::BindVertexBuffer(
   glBindBuffer(GL_ARRAY_BUFFER, buffer.GetGLBuffer());
 }
 
+void RHICommandBuffer<OpenGLBackend>::BindIndexBuffer(
+    const OpenGLBuffer& buffer)
+{
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.GetGLBuffer());
+}
+
 void RHICommandBuffer<OpenGLBackend>::SetVertexInput(
     const VertexInputLayout& layout)
 {
@@ -218,5 +224,24 @@ void RHICommandBuffer<OpenGLBackend>::Draw(uint32_t vertex_count,
                                       static_cast<GLsizei>(vertex_count),
                                       static_cast<GLsizei>(instance_count),
                                       first_instance);
+  }
+}
+
+void RHICommandBuffer<OpenGLBackend>::DrawIndexed(uint32_t index_count,
+                                                  uint32_t instance_count,
+                                                  uint32_t first_instance,
+                                                  const void* indices) const
+{
+  if (instance_count == 1 && first_instance == 0) {
+    glDrawElements(m_PrimitiveMode,
+                   static_cast<GLint>(index_count),
+                   GL_UNSIGNED_INT,
+                   indices);
+  } else {
+    glDrawElementsInstanced(m_PrimitiveMode,
+                            static_cast<GLint>(index_count),
+                            GL_UNSIGNED_INT,
+                            indices,
+                            static_cast<GLsizei>(instance_count));
   }
 }

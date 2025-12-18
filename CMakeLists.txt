@@ -38,10 +38,14 @@ add_library(
     source/Renderer/RHI/Vulkan/VulkanShaderModule.cpp
     source/Renderer/RHI/Vulkan/VulkanDescriptorSet.cpp
     source/Renderer/RHI/Vulkan/VulkanPipelineLayout.cpp
+    source/Renderer/RHI/Vulkan/VulkanTexture.cpp
+    source/Renderer/RHI/Vulkan/VulkanSampler.cpp
     source/Renderer/RHI/OpenGL/OpenGLBuffer.cpp
     source/Renderer/RHI/OpenGL/OpenGLShaderModule.cpp
     source/Renderer/RHI/OpenGL/OpenGLDescriptorSet.cpp
     source/Renderer/RHI/OpenGL/OpenGLPipelineLayout.cpp
+    source/Renderer/RHI/OpenGL/OpenGLTexture.cpp
+    source/Renderer/RHI/OpenGL/OpenGLSampler.cpp
 )
 add_library(lumina::lumina ALIAS lumina_lumina)
 

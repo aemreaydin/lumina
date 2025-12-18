@@ -88,11 +88,10 @@ auto ShaderCompiler::Compile(const std::string& shader_path) -> ShaderSources
   option.value.kind = slang::CompilerOptionValueKind::Int;
   option.value.intValue0 = 1;
 
-  slang::SessionDesc const session_desc = {
-      .targets = &target_desc,
-      .targetCount = 1,
-      .compilerOptionEntries = &option,
-      .compilerOptionEntryCount = 1};
+  slang::SessionDesc const session_desc = {.targets = &target_desc,
+                                           .targetCount = 1,
+                                           .compilerOptionEntries = &option,
+                                           .compilerOptionEntryCount = 1};
 
   ComPtr<slang::ISession> session;
   global_session->createSession(session_desc, session.writeRef());

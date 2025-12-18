@@ -8,7 +8,9 @@
 #include "Renderer/RHI/OpenGL/OpenGLBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLDescriptorSet.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLPipelineLayout.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLSampler.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLShaderModule.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLTexture.hpp"
 #include "Renderer/RHI/RHIBuffer.hpp"
 #include "Renderer/RHI/RHIDescriptorSet.hpp"
 #include "Renderer/RHI/RHIPipeline.hpp"
@@ -164,6 +166,18 @@ auto OpenGLDevice::CreateBuffer(const BufferDesc& desc)
   return std::make_unique<OpenGLBuffer>(desc);
 }
 
+auto OpenGLDevice::CreateTexture(const TextureDesc& desc)
+    -> std::unique_ptr<RHITexture>
+{
+  return std::make_unique<OpenGLTexture>(desc);
+}
+
+auto OpenGLDevice::CreateSampler(const SamplerDesc& desc)
+    -> std::unique_ptr<RHISampler>
+{
+  return std::make_unique<OpenGLSampler>(desc);
+}
+
 auto OpenGLDevice::CreateShaderModule(const ShaderModuleDesc& desc)
     -> std::unique_ptr<RHIShaderModule>
 {
@@ -192,6 +206,12 @@ void OpenGLDevice::BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding)
                                     binding);
 }
 
+void OpenGLDevice::BindIndexBuffer(const RHIBuffer& buffer)
+{
+  RHICommandBuffer<OpenGLBackend>::BindIndexBuffer(
+      dynamic_cast<const OpenGLBuffer&>(buffer));
+}
+
 void OpenGLDevice::SetVertexInput(const VertexInputLayout& layout)
 {
   m_CommandBuffer->SetVertexInput(layout);
@@ -209,6 +229,15 @@ void OpenGLDevice::Draw(uint32_t vertex_count,
 {
   m_CommandBuffer->Draw(
       vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void OpenGLDevice::DrawIndexed(uint32_t index_count,
+                               uint32_t instance_count,
+                               uint32_t first_instance,
+                               const void* indices)
+{
+  m_CommandBuffer->DrawIndexed(
+      index_count, instance_count, first_instance, indices);
 }
 
 auto OpenGLDevice::CreateDescriptorSetLayout(

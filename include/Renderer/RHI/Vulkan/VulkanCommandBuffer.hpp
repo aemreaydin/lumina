@@ -39,12 +39,19 @@ public:
   void BindShaders(const VulkanShaderModule* vertex_shader,
                    const VulkanShaderModule* fragment_shader);
   void BindVertexBuffer(const VulkanBuffer& buffer, uint32_t binding = 0);
+  void BindIndexBuffer(const VulkanBuffer& buffer);
+
   void SetVertexInput(const VertexInputLayout& layout);
   void SetPrimitiveTopology(PrimitiveTopology topology);
   void Draw(uint32_t vertex_count,
             uint32_t instance_count = 1,
             uint32_t first_vertex = 0,
             uint32_t first_instance = 0);
+  void DrawIndexed(uint32_t index_count,
+                   uint32_t instance_count = 0,
+                   uint32_t first_index = 0,
+                   uint32_t vertex_offset = 0,
+                   uint32_t first_instance = 0);
 
   [[nodiscard]] auto GetHandle() -> VkCommandBuffer;
 

@@ -5,6 +5,8 @@
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/Vulkan/VulkanBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
+#include "Renderer/RHI/Vulkan/VulkanSampler.hpp"
+#include "Renderer/RHI/Vulkan/VulkanTexture.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
 VulkanDescriptorSetLayout::VulkanDescriptorSetLayout(
@@ -116,4 +118,36 @@ void VulkanDescriptorSet::WriteBuffer(uint32_t binding,
   vkUpdateDescriptorSets(m_Device.GetVkDevice(), 1, &write, 0, nullptr);
 
   Logger::Trace("[Vulkan] Descriptor set: wrote buffer to binding {}", binding);
+}
+
+void VulkanDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
+                                                    RHITexture* texture,
+                                                    RHISampler* sampler)
+{
+  const auto* vk_texture = dynamic_cast<const VulkanTexture*>(texture);
+  const auto* vk_sampler = dynamic_cast<const VulkanSampler*>(sampler);
+
+  if (vk_texture == nullptr || vk_sampler == nullptr) {
+    Logger::Error("[Vulkan] WriteCombinedImageSampler: Invalid texture or sampler");
+    return;
+  }
+
+  VkDescriptorImageInfo image_info {};
+  image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  image_info.imageView = vk_texture->GetVkImageView();
+  image_info.sampler = vk_sampler->GetVkSampler();
+
+  VkWriteDescriptorSet write {};
+  write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  write.dstSet = m_DescriptorSet;
+  write.dstBinding = binding;
+  write.dstArrayElement = 0;
+  write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  write.descriptorCount = 1;
+  write.pImageInfo = &image_info;
+
+  vkUpdateDescriptorSets(m_Device.GetVkDevice(), 1, &write, 0, nullptr);
+
+  Logger::Trace("[Vulkan] Descriptor set: wrote texture/sampler to binding {}",
+                binding);
 }

@@ -1,13 +1,13 @@
 struct VertexInput
 {
     float3 position : POSITION;
-    float3 color : COLOR;
+    float2 uv: TEXCOORD0;
 };
 
 struct VertexOutput
 {
     float4 position : SV_Position;
-    float3 color : COLOR;
+    float2 uv : TEXCOORD0;
 };
 
 struct Transforms
@@ -17,17 +17,20 @@ struct Transforms
 
 ConstantBuffer<Transforms> transforms;
 
+Sampler2D tex;
+
 [shader("vertex")]
 VertexOutput vertexMain(VertexInput input)
 {
     VertexOutput output;
     output.position = mul(transforms.MVP, float4(input.position, 1.0));
-    output.color = input.color;
+    output.uv = input.uv;
     return output;
 }
 
 [shader("fragment")]
 float4 fragmentMain(VertexOutput input) : SV_Target
 {
-    return float4(input.color, 1.0);
+    float4 color = tex.Sample(input.uv);
+    return color;
 }

@@ -1,9 +1,13 @@
 #include <algorithm>
-#include <array>
+#include <cstddef>
 #include <memory>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#include "Renderer/RHI/RHISampler.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "Core/Application.hpp"
 #include "Core/Logger.hpp"
@@ -12,13 +16,14 @@
 #include "Renderer/RHI/RHIDevice.hpp"
 #include "Renderer/RHI/RHIPipeline.hpp"
 #include "Renderer/RHI/RHIShaderModule.hpp"
+#include "Renderer/RHI/RHITexture.hpp"
 #include "Renderer/RHI/RHIVertexLayout.hpp"
 #include "Renderer/ShaderCompiler.hpp"
 
 struct Vertex
 {
   glm::vec3 Position;
-  glm::vec3 Color;
+  glm::vec2 TexCoord;
 };
 
 struct Transforms
@@ -41,6 +46,7 @@ protected:
     DescriptorSetLayoutDesc layout_desc {};
     layout_desc.Bindings = {
         {0, DescriptorType::UniformBuffer, ShaderStage::Vertex, 1},
+        {1, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1},
     };
     m_DescriptorSetLayout = GetDevice().CreateDescriptorSetLayout(layout_desc);
 
@@ -53,8 +59,6 @@ protected:
     const auto shader_sources =
         ShaderCompiler::Compile("shaders/triangle.slang");
 
-    // Create vertex shader (with descriptor set layouts for
-    // VK_EXT_shader_object)
     const auto& vertex_spirv = shader_sources.at(ShaderType::Vertex);
     ShaderModuleDesc vertex_desc {};
     vertex_desc.Stage = ShaderStage::Vertex;
@@ -63,8 +67,6 @@ protected:
     vertex_desc.SetLayouts = {m_DescriptorSetLayout};
     m_VertexShader = GetDevice().CreateShaderModule(vertex_desc);
 
-    // Create fragment shader (with descriptor set layouts for
-    // VK_EXT_shader_object)
     const auto& fragment_spirv = shader_sources.at(ShaderType::Fragment);
     ShaderModuleDesc fragment_desc {};
     fragment_desc.Stage = ShaderStage::Fragment;
@@ -73,24 +75,54 @@ protected:
     fragment_desc.SetLayouts = {m_DescriptorSetLayout};
     m_FragmentShader = GetDevice().CreateShaderModule(fragment_desc);
 
-    // Triangle vertices (CCW winding)
-    constexpr std::array<Vertex, 3> VERTICES = {{
-        {.Position = {0.0F, 0.5F, 0.0F},
-         .Color = {1.0F, 0.0F, 0.0F}},  // Top - Red
-        {.Position = {-0.5F, -0.5F, 0.0F},
-         .Color = {0.0F, 1.0F, 0.0F}},  // Bottom Left - Green
-        {.Position = {0.5F, -0.5F, 0.0F},
-         .Color = {0.0F, 0.0F, 1.0F}},  // Bottom Right - Blue
+    m_Vertices = {{
+        {.Position = {-0.5F, 0.5F, 0.0F}, .TexCoord = {0.0F, 0.0F}},
+        {.Position = {-0.5F, -0.5F, 0.0F}, .TexCoord = {0.0F, 1.0F}},
+        {.Position = {0.5F, -0.5F, 0.0F}, .TexCoord = {1.0F, 1.0F}},
+        {.Position = {0.5F, 0.5F, 0.0F}, .TexCoord = {1.0F, 0.0F}},
     }};
+    m_Indices = {0, 1, 2, 0, 2, 3};
 
-    // Create vertex buffer
-    BufferDesc buffer_desc {};
-    buffer_desc.Size = sizeof(VERTICES);
-    buffer_desc.Usage = BufferUsage::Vertex;
-    buffer_desc.CPUVisible = true;
+    int width = 0;
+    int height = 0;
+    int num_channels = 0;
+    const auto* image = stbi_load("assets/brick_wall_base.jpg",
+                                  &width,
+                                  &height,
+                                  &num_channels,
+                                  STBI_rgb_alpha);
+    Logger::Info("Image Loaded - Width: {}, Height: {}, Num Channels: {}",
+                 width,
+                 height,
+                 num_channels);
 
-    m_VertexBuffer = GetDevice().CreateBuffer(buffer_desc);
-    m_VertexBuffer->Upload(VERTICES.data(), sizeof(VERTICES), 0);
+    TextureDesc tex_desc {};
+    tex_desc.Format = TextureFormat::RGBA8Srgb;
+    tex_desc.Usage = TextureUsage::Sampled;
+    tex_desc.MipLevels = 1;
+    tex_desc.Width = static_cast<uint32_t>(width);
+    tex_desc.Height = static_cast<uint32_t>(height);
+    m_Texture = GetDevice().CreateTexture(tex_desc);
+    m_Texture->Upload(image, static_cast<size_t>(width * height) * 4);
+
+    const SamplerDesc sampler_desc {};
+    m_Sampler = GetDevice().CreateSampler(sampler_desc);
+
+    BufferDesc vertex_buffer_desc {};
+    vertex_buffer_desc.Size = sizeof(Vertex) * m_Vertices.size();
+    vertex_buffer_desc.Usage = BufferUsage::Vertex;
+    vertex_buffer_desc.CPUVisible = true;
+    BufferDesc index_buffer_desc {};
+    index_buffer_desc.Size = sizeof(uint32_t) * m_Indices.size();
+    index_buffer_desc.Usage = BufferUsage::Index;
+    index_buffer_desc.CPUVisible = true;
+
+    m_VertexBuffer = GetDevice().CreateBuffer(vertex_buffer_desc);
+    m_VertexBuffer->Upload(
+        m_Vertices.data(), sizeof(Vertex) * m_Vertices.size(), 0);
+    m_IndexBuffer = GetDevice().CreateBuffer(index_buffer_desc);
+    m_IndexBuffer->Upload(
+        m_Indices.data(), sizeof(uint32_t) * m_Indices.size(), 0);
 
     // Create uniform buffer for MVP matrix
     BufferDesc uniform_desc {};
@@ -103,12 +135,14 @@ protected:
     m_DescriptorSet = GetDevice().CreateDescriptorSet(m_DescriptorSetLayout);
     m_DescriptorSet->WriteBuffer(
         0, m_UniformBuffer.get(), 0, sizeof(Transforms));
+    m_DescriptorSet->WriteCombinedImageSampler(
+        1, m_Texture.get(), m_Sampler.get());
 
     // Set up vertex layout
     m_VertexLayout.Stride = sizeof(Vertex);
     m_VertexLayout.Attributes = {
         {0, VertexFormat::Float3, offsetof(Vertex, Position)},
-        {1, VertexFormat::Float3, offsetof(Vertex, Color)},
+        {1, VertexFormat::Float2, offsetof(Vertex, TexCoord)},
     };
 
     Logger::Info("SandboxApp::OnInit - Triangle resources created");
@@ -118,17 +152,11 @@ protected:
   {
     auto& device = GetDevice();
 
-    // Accumulate time and calculate rotation
-    // Clamp delta to prevent jarring jumps during resize/stutter
-    constexpr float MAX_DELTA = 0.1F;
-    m_TotalTime += std::min(delta_time, MAX_DELTA);
-    const float angle = m_TotalTime;  // Radians per second
+    m_Angle += delta_time;
 
-    // Calculate MVP matrix (identity model, identity view, identity projection)
-    // Just apply rotation around Z axis
     Transforms transforms {};
     transforms.MVP =
-        glm::rotate(glm::mat4(1.0F), angle, glm::vec3(0.0F, 0.0F, 1.0F));
+        glm::rotate(glm::mat4(1.0F), m_Angle, glm::vec3(0.0F, 0.0F, 1.0F));
 
     // Upload MVP to uniform buffer
     m_UniformBuffer->Upload(&transforms, sizeof(Transforms), 0);
@@ -136,17 +164,21 @@ protected:
     device.BindShaders(m_VertexShader.get(), m_FragmentShader.get());
     device.BindVertexBuffer(*m_VertexBuffer, 0);
     device.SetVertexInput(m_VertexLayout);
+    device.BindIndexBuffer(*m_IndexBuffer);
     device.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
     device.BindDescriptorSet(0, *m_DescriptorSet, *m_PipelineLayout);
-    device.Draw(3, 1, 0, 0);
+    device.DrawIndexed(static_cast<uint32_t>(m_Indices.size()), 1, 0, nullptr);
   }
 
   void OnDestroy() override
   {
     Logger::Info("SandboxApp::OnDestroy - Cleaning up resources");
     m_DescriptorSet.reset();
+    m_Texture.reset();
+    m_Sampler.reset();
     m_UniformBuffer.reset();
     m_VertexBuffer.reset();
+    m_IndexBuffer.reset();
     m_FragmentShader.reset();
     m_VertexShader.reset();
     m_PipelineLayout.reset();
@@ -155,14 +187,19 @@ protected:
 
 private:
   std::unique_ptr<RHIBuffer> m_VertexBuffer;
+  std::unique_ptr<RHIBuffer> m_IndexBuffer;
   std::unique_ptr<RHIBuffer> m_UniformBuffer;
   std::unique_ptr<RHIShaderModule> m_VertexShader;
   std::unique_ptr<RHIShaderModule> m_FragmentShader;
   std::shared_ptr<RHIDescriptorSetLayout> m_DescriptorSetLayout;
   std::shared_ptr<RHIPipelineLayout> m_PipelineLayout;
   std::unique_ptr<RHIDescriptorSet> m_DescriptorSet;
+  std::unique_ptr<RHITexture> m_Texture;
+  std::unique_ptr<RHISampler> m_Sampler;
+  std::vector<Vertex> m_Vertices;
+  std::vector<uint32_t> m_Indices;
   VertexInputLayout m_VertexLayout;
-  float m_TotalTime = 0.0F;
+  float m_Angle = 0.0F;
 };
 
 auto CreateApplication() -> std::unique_ptr<Application>

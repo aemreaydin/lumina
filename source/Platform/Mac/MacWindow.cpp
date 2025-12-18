@@ -26,11 +26,10 @@ void MacWindow::Init(WindowProps props)
     flags |= SDL_WINDOW_VULKAN;
   }
 
-  m_Window =
-      SDL_CreateWindow(m_WindowProps.Title.c_str(),
-                       static_cast<int>(m_WindowProps.Dimensions.Width),
-                       static_cast<int>(m_WindowProps.Dimensions.Height),
-                       flags);
+  m_Window = SDL_CreateWindow(m_WindowProps.Title.c_str(),
+                              static_cast<int>(m_WindowProps.Dimensions.Width),
+                              static_cast<int>(m_WindowProps.Dimensions.Height),
+                              flags);
 
   if (m_Window == nullptr) {
     Logger::Critical("Failed to create SDL window: {}", SDL_GetError());
@@ -38,9 +37,8 @@ void MacWindow::Init(WindowProps props)
   }
 
   // Store WindowProps pointer for event handling
-  SDL_SetPointerProperty(SDL_GetWindowProperties(m_Window),
-                         "props",
-                         &m_WindowProps);
+  SDL_SetPointerProperty(
+      SDL_GetWindowProperties(m_Window), "props", &m_WindowProps);
 
   Logger::Info("Mac window created successfully");
 }
@@ -56,7 +54,7 @@ void MacWindow::SetVSync(bool enabled)
 void MacWindow::OnUpdate()
 {
   SDL_Event event;
-  while (SDL_PollEvent(&event) != 0) {
+  while (SDL_PollEvent(&event)) {
     switch (event.type) {
       case SDL_EVENT_QUIT:
         Logger::Info("Window close requested");
@@ -64,8 +62,10 @@ void MacWindow::OnUpdate()
         break;
 
       case SDL_EVENT_WINDOW_RESIZED:
-        m_WindowProps.Dimensions.Width = static_cast<uint32_t>(event.window.data1);
-        m_WindowProps.Dimensions.Height = static_cast<uint32_t>(event.window.data2);
+        m_WindowProps.Dimensions.Width =
+            static_cast<uint32_t>(event.window.data1);
+        m_WindowProps.Dimensions.Height =
+            static_cast<uint32_t>(event.window.data2);
         Logger::Trace("Window resized: {}x{}",
                       m_WindowProps.Dimensions.Width,
                       m_WindowProps.Dimensions.Height);

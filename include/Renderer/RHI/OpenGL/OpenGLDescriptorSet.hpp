@@ -8,6 +8,8 @@
 #include "Renderer/RHI/RHIDescriptorSet.hpp"
 
 class OpenGLBuffer;
+class OpenGLTexture;
+class OpenGLSampler;
 
 class OpenGLDescriptorSetLayout : public RHIDescriptorSetLayout
 {
@@ -28,6 +30,12 @@ struct OpenGLBufferBinding
   size_t Range {0};
 };
 
+struct OpenGLTextureBinding
+{
+  const OpenGLTexture* Texture {nullptr};
+  const OpenGLSampler* Sampler {nullptr};
+};
+
 class OpenGLDescriptorSet : public RHIDescriptorSet
 {
 public:
@@ -39,11 +47,16 @@ public:
                    size_t offset,
                    size_t range) override;
 
+  void WriteCombinedImageSampler(uint32_t binding,
+                                 RHITexture* texture,
+                                 RHISampler* sampler) override;
+
   void Bind() const;
 
 private:
   std::shared_ptr<RHIDescriptorSetLayout> m_Layout;
   std::unordered_map<uint32_t, OpenGLBufferBinding> m_BufferBindings;
+  std::unordered_map<uint32_t, OpenGLTextureBinding> m_TextureBindings;
 };
 
 #endif

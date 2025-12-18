@@ -52,8 +52,10 @@ VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
                     VkUtils::ToString(result.error())));
   }
 
-  Logger::Trace("[Vulkan] Created {} shader object with {} descriptor set layouts",
-                ToString(m_Stage), vk_set_layouts.size());
+  Logger::Trace(
+      "[Vulkan] Created {} shader object with {} descriptor set layouts",
+      ToString(m_Stage),
+      vk_set_layouts.size());
 }
 
 VulkanShaderModule::~VulkanShaderModule()

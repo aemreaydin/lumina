@@ -33,12 +33,17 @@ public:
   void BindShaders(const OpenGLShaderModule* vertex_shader,
                    const OpenGLShaderModule* fragment_shader);
   void BindVertexBuffer(const OpenGLBuffer& buffer, uint32_t binding = 0);
+  static void BindIndexBuffer(const OpenGLBuffer& buffer);
   void SetVertexInput(const VertexInputLayout& layout);
   void SetPrimitiveTopology(PrimitiveTopology topology);
   void Draw(uint32_t vertex_count,
             uint32_t instance_count = 1,
             uint32_t first_vertex = 0,
             uint32_t first_instance = 0) const;
+  void DrawIndexed(uint32_t index_count,
+                   uint32_t instance_count = 0,
+                   uint32_t first_instance = 0,
+                   const void* indices = nullptr) const;
 
   [[nodiscard]] static auto GetHandle() -> OpenGLBackend::CommandBufferHandle;
 

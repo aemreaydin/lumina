@@ -4,6 +4,8 @@
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLBuffer.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLSampler.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLTexture.hpp"
 
 OpenGLDescriptorSetLayout::OpenGLDescriptorSetLayout(
     const DescriptorSetLayoutDesc& desc)
@@ -45,8 +47,28 @@ void OpenGLDescriptorSet::WriteBuffer(uint32_t binding,
   Logger::Trace("[OpenGL] Descriptor set: wrote buffer to binding {}", binding);
 }
 
+void OpenGLDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
+                                                    RHITexture* texture,
+                                                    RHISampler* sampler)
+{
+  const auto* gl_texture = dynamic_cast<const OpenGLTexture*>(texture);
+  const auto* gl_sampler = dynamic_cast<const OpenGLSampler*>(sampler);
+
+  if (gl_texture == nullptr || gl_sampler == nullptr) {
+    Logger::Error("[OpenGL] WriteCombinedImageSampler: Invalid texture or sampler");
+    return;
+  }
+
+  m_TextureBindings[binding] =
+      OpenGLTextureBinding {.Texture = gl_texture, .Sampler = gl_sampler};
+
+  Logger::Trace("[OpenGL] Descriptor set: wrote texture/sampler to binding {}",
+                binding);
+}
+
 void OpenGLDescriptorSet::Bind() const
 {
+  // Bind uniform buffers
   for (const auto& [binding, buffer_binding] : m_BufferBindings) {
     if (buffer_binding.Buffer == nullptr) {
       continue;
@@ -57,5 +79,17 @@ void OpenGLDescriptorSet::Bind() const
                       buffer_binding.Buffer->GetGLBuffer(),
                       static_cast<GLintptr>(buffer_binding.Offset),
                       static_cast<GLsizeiptr>(buffer_binding.Range));
+  }
+
+  // Bind textures and samplers
+  for (const auto& [binding, texture_binding] : m_TextureBindings) {
+    if (texture_binding.Texture == nullptr || texture_binding.Sampler == nullptr) {
+      continue;
+    }
+
+    // Bind texture to texture unit (binding point)
+    glBindTextureUnit(binding, texture_binding.Texture->GetGLTexture());
+    // Bind sampler to the same texture unit
+    glBindSampler(binding, texture_binding.Sampler->GetGLSampler());
   }
 }
