@@ -53,6 +53,8 @@ public:
     return m_ShouldClose;
   }
 
+  void RequestClose() override { m_ShouldClose = true; }
+
 private:
   SDL_Window* m_Window {nullptr};
   bool m_ShouldClose {false};

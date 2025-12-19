@@ -64,6 +64,7 @@ void VulkanDevice::Init(const RendererConfig& config, void* window)
 
   m_Window = static_cast<SDL_Window*>(window);
   m_ValidationEnabled = config.EnableValidation;
+  m_DepthEnabled = config.EnableDepth;
 
   // Initialize volk
   if (auto result = VkUtils::Check(volkInitialize()); !result) {
@@ -251,10 +252,18 @@ void VulkanDevice::BeginFrame()
 
   frame_data.CommandBuffer.Begin();
 
+  DepthStencilInfo depth_stencil {};
+  depth_stencil.DepthLoadOp = LoadOp::Clear;
+  depth_stencil.DepthStoreOp = StoreOp::DontCare;
+  depth_stencil.ClearDepthStencil.Depth = 1.0F;
+
   RenderPassInfo render_pass {};
   render_pass.ColorAttachment.ColorLoadOp = LoadOp::Clear;
   render_pass.ColorAttachment.ClearColor = {
-      .R = 1.0F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+      .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+  if (m_DepthEnabled) {
+    render_pass.DepthStencilAttachment = &depth_stencil;
+  }
   render_pass.Width = m_Swapchain->GetWidth();
   render_pass.Height = m_Swapchain->GetHeight();
 
@@ -654,59 +663,9 @@ auto VulkanDevice::CreateGraphicsPipeline(
   return nullptr;
 }
 
-void VulkanDevice::BindShaders(const RHIShaderModule* vertex_shader,
-                               const RHIShaderModule* fragment_shader)
+auto VulkanDevice::GetCurrentCommandBuffer() -> RHICommandBuffer*
 {
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.BindShaders(
-      dynamic_cast<const VulkanShaderModule*>(vertex_shader),
-      dynamic_cast<const VulkanShaderModule*>(fragment_shader));
-}
-
-void VulkanDevice::BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.BindVertexBuffer(
-      dynamic_cast<const VulkanBuffer&>(buffer), binding);
-}
-
-void VulkanDevice::BindIndexBuffer(const RHIBuffer& buffer)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.BindIndexBuffer(
-      dynamic_cast<const VulkanBuffer&>(buffer));
-}
-
-void VulkanDevice::SetVertexInput(const VertexInputLayout& layout)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.SetVertexInput(layout);
-}
-
-void VulkanDevice::SetPrimitiveTopology(PrimitiveTopology topology)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.SetPrimitiveTopology(topology);
-}
-
-void VulkanDevice::Draw(uint32_t vertex_count,
-                        uint32_t instance_count,
-                        uint32_t first_vertex,
-                        uint32_t first_instance)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.Draw(
-      vertex_count, instance_count, first_vertex, first_instance);
-}
-
-void VulkanDevice::DrawIndexed(uint32_t index_count,
-                               uint32_t instance_count,
-                               uint32_t first_instance,
-                               const void* /*indices*/)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.DrawIndexed(
-      index_count, instance_count, 0, 0, first_instance);
+  return &m_FrameData.at(m_CurrentFrameIndex).CommandBuffer;
 }
 
 void VulkanDevice::create_descriptor_pool()
@@ -758,25 +717,4 @@ auto VulkanDevice::CreatePipelineLayout(const PipelineLayoutDesc& desc)
     -> std::shared_ptr<RHIPipelineLayout>
 {
   return std::make_shared<VulkanPipelineLayout>(*this, desc);
-}
-
-void VulkanDevice::BindDescriptorSet(uint32_t set_index,
-                                     const RHIDescriptorSet& descriptor_set,
-                                     const RHIPipelineLayout& layout)
-{
-  auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  const auto& vk_descriptor_set =
-      dynamic_cast<const VulkanDescriptorSet&>(descriptor_set);
-  const auto& vk_layout = dynamic_cast<const VulkanPipelineLayout&>(layout);
-
-  VkDescriptorSet vk_set = vk_descriptor_set.GetVkDescriptorSet();
-
-  vkCmdBindDescriptorSets(frame_data.CommandBuffer.GetHandle(),
-                          VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          vk_layout.GetVkPipelineLayout(),
-                          set_index,
-                          1,
-                          &vk_set,
-                          0,
-                          nullptr);
 }

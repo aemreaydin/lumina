@@ -4,56 +4,59 @@
 #include <volk.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
-#include "Renderer/RHI/RHIVertexLayout.hpp"
-#include "Renderer/RHI/Vulkan/VulkanBackend.hpp"
+#include "Renderer/RHI/RenderPassInfo.hpp"
 
 class VulkanDevice;
 class VulkanSwapchain;
-class VulkanShaderModule;
-class VulkanBuffer;
 
-template<>
-class RHICommandBuffer<VulkanBackend>
+class VulkanCommandBuffer final : public RHICommandBuffer
 {
 public:
-  RHICommandBuffer() = default;
-  RHICommandBuffer(const RHICommandBuffer&) = delete;
-  RHICommandBuffer(RHICommandBuffer&&) = delete;
-  auto operator=(const RHICommandBuffer&) -> RHICommandBuffer& = delete;
-  auto operator=(RHICommandBuffer&&) -> RHICommandBuffer& = delete;
-  ~RHICommandBuffer() = default;
+  VulkanCommandBuffer() = default;
+  VulkanCommandBuffer(const VulkanCommandBuffer&) = delete;
+  VulkanCommandBuffer(VulkanCommandBuffer&&) = delete;
+  auto operator=(const VulkanCommandBuffer&) -> VulkanCommandBuffer& = delete;
+  auto operator=(VulkanCommandBuffer&&) -> VulkanCommandBuffer& = delete;
+  ~VulkanCommandBuffer() override = default;
 
+  // Vulkan-specific lifecycle methods
   void Allocate(const VulkanDevice& device, VkCommandPool pool);
   void Free(const VulkanDevice& device, VkCommandPool pool);
   void Begin();
   void End();
 
+  // Render pass (Vulkan-specific, needs swapchain)
   void BeginRenderPass(const VulkanSwapchain& swapchain,
                        const RenderPassInfo& info);
   void EndRenderPass(const VulkanSwapchain& swapchain);
 
-  void ClearColor(
-      const VulkanSwapchain& swapchain, float r, float g, float b, float a);
+  void ClearColor(const VulkanSwapchain& swapchain,
+                  float r,
+                  float g,
+                  float b,
+                  float a);
 
-  // Drawing commands
-  void BindShaders(const VulkanShaderModule* vertex_shader,
-                   const VulkanShaderModule* fragment_shader);
-  void BindVertexBuffer(const VulkanBuffer& buffer, uint32_t binding = 0);
-  void BindIndexBuffer(const VulkanBuffer& buffer);
-
-  void SetVertexInput(const VertexInputLayout& layout);
-  void SetPrimitiveTopology(PrimitiveTopology topology);
+  // RHICommandBuffer interface (drawing commands)
+  void BindShaders(const RHIShaderModule* vertex_shader,
+                   const RHIShaderModule* fragment_shader) override;
+  void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
+  void BindIndexBuffer(const RHIBuffer& buffer) override;
+  void SetVertexInput(const VertexInputLayout& layout) override;
+  void SetPrimitiveTopology(PrimitiveTopology topology) override;
+  void BindDescriptorSet(uint32_t set_index,
+                         const RHIDescriptorSet& descriptor_set,
+                         const RHIPipelineLayout& layout) override;
   void Draw(uint32_t vertex_count,
-            uint32_t instance_count = 1,
-            uint32_t first_vertex = 0,
-            uint32_t first_instance = 0);
+            uint32_t instance_count,
+            uint32_t first_vertex,
+            uint32_t first_instance) override;
   void DrawIndexed(uint32_t index_count,
-                   uint32_t instance_count = 0,
-                   uint32_t first_index = 0,
-                   uint32_t vertex_offset = 0,
-                   uint32_t first_instance = 0);
+                   uint32_t instance_count,
+                   uint32_t first_index,
+                   int32_t vertex_offset,
+                   uint32_t first_instance) override;
 
-  [[nodiscard]] auto GetHandle() -> VkCommandBuffer;
+  [[nodiscard]] auto GetHandle() const -> VkCommandBuffer;
 
 private:
   VkCommandBuffer m_CommandBuffer {VK_NULL_HANDLE};

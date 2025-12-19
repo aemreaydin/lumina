@@ -5,10 +5,10 @@
 
 #include <SDL3/SDL.h>
 
-#include "Renderer/RHI/OpenGL/OpenGLBackend.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLCommandBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLSwapchain.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
+#include "Renderer/RHI/RenderPassInfo.hpp"
 
 struct RendererConfig;
 
@@ -32,6 +32,7 @@ public:
   void WaitIdle() override;
 
   [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
+  [[nodiscard]] auto GetCurrentCommandBuffer() -> RHICommandBuffer* override;
 
   [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
       -> std::unique_ptr<RHIBuffer> override;
@@ -52,31 +53,13 @@ public:
   [[nodiscard]] auto CreatePipelineLayout(const PipelineLayoutDesc& desc)
       -> std::shared_ptr<RHIPipelineLayout> override;
 
-  void BindShaders(const RHIShaderModule* vertex_shader,
-                   const RHIShaderModule* fragment_shader) override;
-  void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
-  void BindIndexBuffer(const RHIBuffer& buffer) override;
-  void SetVertexInput(const VertexInputLayout& layout) override;
-  void SetPrimitiveTopology(PrimitiveTopology topology) override;
-  void BindDescriptorSet(uint32_t set_index,
-                         const RHIDescriptorSet& descriptor_set,
-                         const RHIPipelineLayout& layout) override;
-  void Draw(uint32_t vertex_count,
-            uint32_t instance_count,
-            uint32_t first_vertex,
-            uint32_t first_instance) override;
-
-  void DrawIndexed(uint32_t index_count,
-                   uint32_t instance_count,
-                   uint32_t first_instance,
-                   const void* indices) override;
-
 private:
   std::unique_ptr<OpenGLSwapchain> m_Swapchain;
-  std::unique_ptr<RHICommandBuffer<OpenGLBackend>> m_CommandBuffer;
+  std::unique_ptr<OpenGLCommandBuffer> m_CommandBuffer;
   SDL_Window* m_Window {nullptr};
   SDL_GLContext m_GLContext {nullptr};
   bool m_Initialized {false};
+  bool m_DepthEnabled {false};
 };
 
 #endif

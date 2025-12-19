@@ -19,12 +19,15 @@ add_library(
     lumina_lumina
     source/Core/Application.cpp
     source/Core/ConfigLoader.cpp
+    source/Core/Input.cpp
     source/Core/Logger.cpp
     source/Core/Window.cpp
     # Platform
     source/Platform/Linux/LinuxWindow.cpp
     # source/Platform/Windows/WindowsWindow.cpp
     # Renderer
+    source/Renderer/Camera.cpp
+    source/Renderer/CameraController.cpp
     source/Renderer/ShaderCompiler.cpp
     # RHI
     source/Renderer/RHI/RHIDevice.cpp
@@ -110,6 +113,9 @@ target_link_libraries(lumina_lumina PUBLIC tomlplusplus::tomlplusplus)
 
 find_package(glm CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC glm::glm)
+
+find_package(tinyobjloader CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC tinyobjloader::tinyobjloader)
 
 find_library(SLANG_LIBRARY slang REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC ${SLANG_LIBRARY})

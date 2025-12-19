@@ -5,15 +5,16 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Core/Logger.hpp"
-#include "Renderer/RHI/RHICommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanBuffer.hpp"
+#include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
+#include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
 #include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
-void RHICommandBuffer<VulkanBackend>::Allocate(const VulkanDevice& device,
-                                               VkCommandPool pool)
+void VulkanCommandBuffer::Allocate(const VulkanDevice& device,
+                                   VkCommandPool pool)
 {
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -31,13 +32,12 @@ void RHICommandBuffer<VulkanBackend>::Allocate(const VulkanDevice& device,
   }
 }
 
-void RHICommandBuffer<VulkanBackend>::Free(const VulkanDevice& device,
-                                           VkCommandPool pool)
+void VulkanCommandBuffer::Free(const VulkanDevice& device, VkCommandPool pool)
 {
   vkFreeCommandBuffers(device.GetVkDevice(), pool, 1, &m_CommandBuffer);
 }
 
-void RHICommandBuffer<VulkanBackend>::Begin()
+void VulkanCommandBuffer::Begin()
 {
   Logger::Trace("[Vulkan] Begin command buffer recording");
   VkCommandBufferBeginInfo begin_info = {};
@@ -54,7 +54,7 @@ void RHICommandBuffer<VulkanBackend>::Begin()
   m_Recording = true;
 }
 
-void RHICommandBuffer<VulkanBackend>::End()
+void VulkanCommandBuffer::End()
 {
   if (m_InRenderPass) {
     throw std::runtime_error(
@@ -71,8 +71,8 @@ void RHICommandBuffer<VulkanBackend>::End()
   Logger::Trace("[Vulkan] End command buffer recording");
 }
 
-void RHICommandBuffer<VulkanBackend>::BeginRenderPass(
-    const VulkanSwapchain& swapchain, const RenderPassInfo& info)
+void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
+                                          const RenderPassInfo& info)
 {
   Logger::Trace("[Vulkan] Begin render pass ({}x{}) with dynamic rendering",
                 info.Width,
@@ -80,33 +80,58 @@ void RHICommandBuffer<VulkanBackend>::BeginRenderPass(
   m_CurrentRenderPass = info;
   m_InRenderPass = true;
 
-  VkImageMemoryBarrier barrier = {};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = swapchain.GetCurrentImage();
-  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.levelCount = 1;
-  barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.layerCount = 1;
-  barrier.srcAccessMask = 0;
-  barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  std::vector<VkImageMemoryBarrier> barriers;
+
+  VkImageMemoryBarrier color_barrier {};
+  color_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  color_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  color_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  color_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  color_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  color_barrier.image = swapchain.GetCurrentImage();
+  color_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  color_barrier.subresourceRange.baseMipLevel = 0;
+  color_barrier.subresourceRange.levelCount = 1;
+  color_barrier.subresourceRange.baseArrayLayer = 0;
+  color_barrier.subresourceRange.layerCount = 1;
+  color_barrier.srcAccessMask = 0;
+  color_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  barriers.push_back(color_barrier);
+
+  VkPipelineStageFlags dst_stage =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+  if (info.DepthStencilAttachment != nullptr) {
+    VkImageMemoryBarrier depth_barrier {};
+    depth_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    depth_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depth_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depth_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    depth_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    depth_barrier.image = swapchain.GetDepthImage();
+    depth_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depth_barrier.subresourceRange.baseMipLevel = 0;
+    depth_barrier.subresourceRange.levelCount = 1;
+    depth_barrier.subresourceRange.baseArrayLayer = 0;
+    depth_barrier.subresourceRange.layerCount = 1;
+    depth_barrier.srcAccessMask = 0;
+    depth_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    barriers.push_back(depth_barrier);
+    dst_stage |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+  }
 
   vkCmdPipelineBarrier(m_CommandBuffer,
                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       dst_stage,
                        0,
                        0,
                        nullptr,
                        0,
                        nullptr,
-                       1,
-                       &barrier);
+                       static_cast<uint32_t>(barriers.size()),
+                       barriers.data());
 
-  VkClearValue clear_value = {};
+  VkClearValue clear_value {};
   if (info.ColorAttachment.ColorLoadOp == LoadOp::Clear) {
     const auto& clear = info.ColorAttachment.ClearColor;
     clear_value.color.float32[0] = clear.R;
@@ -128,7 +153,7 @@ void RHICommandBuffer<VulkanBackend>::BeginRenderPass(
       break;
   }
 
-  VkRenderingAttachmentInfo color_attachment = {};
+  VkRenderingAttachmentInfo color_attachment {};
   color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
   color_attachment.imageView = swapchain.GetCurrentImageView();
   color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -138,7 +163,36 @@ void RHICommandBuffer<VulkanBackend>::BeginRenderPass(
       : VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.clearValue = clear_value;
 
-  VkRenderingInfo rendering_info = {};
+  VkRenderingAttachmentInfo depth_attachment {};
+  if (info.DepthStencilAttachment != nullptr) {
+    depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depth_attachment.imageView = swapchain.GetDepthImageView();
+    depth_attachment.imageLayout =
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    switch (info.DepthStencilAttachment->DepthLoadOp) {
+      case LoadOp::Load:
+        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        break;
+      case LoadOp::Clear:
+        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        break;
+      case LoadOp::DontCare:
+        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        break;
+    }
+
+    depth_attachment.storeOp =
+        info.DepthStencilAttachment->DepthStoreOp == StoreOp::Store
+        ? VK_ATTACHMENT_STORE_OP_STORE
+        : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth_attachment.clearValue.depthStencil.depth =
+        info.DepthStencilAttachment->ClearDepthStencil.Depth;
+    depth_attachment.clearValue.depthStencil.stencil =
+        info.DepthStencilAttachment->ClearDepthStencil.Stencil;
+  }
+
+  VkRenderingInfo rendering_info {};
   rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
   rendering_info.renderArea.offset = {.x = 0, .y = 0};
   rendering_info.renderArea.extent = {.width = info.Width,
@@ -146,12 +200,14 @@ void RHICommandBuffer<VulkanBackend>::BeginRenderPass(
   rendering_info.layerCount = 1;
   rendering_info.colorAttachmentCount = 1;
   rendering_info.pColorAttachments = &color_attachment;
+  if (info.DepthStencilAttachment != nullptr) {
+    rendering_info.pDepthAttachment = &depth_attachment;
+  }
 
   vkCmdBeginRendering(m_CommandBuffer, &rendering_info);
 }
 
-void RHICommandBuffer<VulkanBackend>::EndRenderPass(
-    const VulkanSwapchain& swapchain)
+void VulkanCommandBuffer::EndRenderPass(const VulkanSwapchain& swapchain)
 {
   if (!m_InRenderPass) {
     return;
@@ -190,7 +246,7 @@ void RHICommandBuffer<VulkanBackend>::EndRenderPass(
   m_CurrentRenderPass = {};
 }
 
-void RHICommandBuffer<VulkanBackend>::ClearColor(
+void VulkanCommandBuffer::ClearColor(
     const VulkanSwapchain& swapchain, float r, float g, float b, float a)
 {
   VkClearColorValue clear_color = {};
@@ -214,22 +270,24 @@ void RHICommandBuffer<VulkanBackend>::ClearColor(
                        &range);
 }
 
-auto RHICommandBuffer<VulkanBackend>::GetHandle() -> VkCommandBuffer
+auto VulkanCommandBuffer::GetHandle() const -> VkCommandBuffer
 {
   return m_CommandBuffer;
 }
 
-void RHICommandBuffer<VulkanBackend>::BindShaders(
-    const VulkanShaderModule* vertex_shader,
-    const VulkanShaderModule* fragment_shader)
+void VulkanCommandBuffer::BindShaders(const RHIShaderModule* vertex_shader,
+                                      const RHIShaderModule* fragment_shader)
 {
+  const auto* vk_vertex =
+      dynamic_cast<const VulkanShaderModule*>(vertex_shader);
+  const auto* vk_fragment =
+      dynamic_cast<const VulkanShaderModule*>(fragment_shader);
+
   std::array<VkShaderStageFlagBits, 2> stages = {VK_SHADER_STAGE_VERTEX_BIT,
                                                  VK_SHADER_STAGE_FRAGMENT_BIT};
   std::array<VkShaderEXT, 2> shaders = {
-      vertex_shader != nullptr ? vertex_shader->GetVkShaderEXT()
-                               : VK_NULL_HANDLE,
-      fragment_shader != nullptr ? fragment_shader->GetVkShaderEXT()
-                                 : VK_NULL_HANDLE};
+      vk_vertex != nullptr ? vk_vertex->GetVkShaderEXT() : VK_NULL_HANDLE,
+      vk_fragment != nullptr ? vk_fragment->GetVkShaderEXT() : VK_NULL_HANDLE};
 
   vkCmdBindShadersEXT(m_CommandBuffer, 2, stages.data(), shaders.data());
 
@@ -239,11 +297,18 @@ void RHICommandBuffer<VulkanBackend>::BindShaders(
   vkCmdSetRasterizerDiscardEnable(m_CommandBuffer, VK_FALSE);
   vkCmdSetAlphaToCoverageEnableEXT(m_CommandBuffer, VK_FALSE);
   vkCmdSetPolygonModeEXT(m_CommandBuffer, VK_POLYGON_MODE_FILL);
-  vkCmdSetCullMode(m_CommandBuffer, VK_CULL_MODE_NONE);
+  vkCmdSetCullMode(m_CommandBuffer, VK_CULL_MODE_BACK_BIT);
   vkCmdSetFrontFace(m_CommandBuffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-  vkCmdSetDepthTestEnable(m_CommandBuffer, VK_FALSE);
-  vkCmdSetDepthWriteEnable(m_CommandBuffer, VK_FALSE);
+  const VkBool32 depth_test_enable =
+      m_CurrentRenderPass.DepthStencilAttachment != nullptr ? VK_TRUE
+                                                            : VK_FALSE;
+  vkCmdSetDepthTestEnable(m_CommandBuffer, depth_test_enable);
+  vkCmdSetDepthWriteEnable(m_CommandBuffer, depth_test_enable);
+  if (depth_test_enable == VK_TRUE) {
+    vkCmdSetDepthCompareOp(m_CommandBuffer, VK_COMPARE_OP_LESS);
+  }
   vkCmdSetDepthBiasEnable(m_CommandBuffer, VK_FALSE);
+  vkCmdSetDepthBoundsTestEnable(m_CommandBuffer, VK_FALSE);
   vkCmdSetStencilTestEnable(m_CommandBuffer, VK_FALSE);
   vkCmdSetPrimitiveRestartEnable(m_CommandBuffer, VK_FALSE);
 
@@ -285,25 +350,24 @@ void RHICommandBuffer<VulkanBackend>::BindShaders(
   Logger::Trace("[Vulkan] Bound shaders");
 }
 
-void RHICommandBuffer<VulkanBackend>::BindVertexBuffer(
-    const VulkanBuffer& buffer, uint32_t binding)
+void VulkanCommandBuffer::BindVertexBuffer(const RHIBuffer& buffer,
+                                           uint32_t binding)
 {
-  VkBuffer vk_buffer = buffer.GetVkBuffer();
+  const auto& vk_buffer = dynamic_cast<const VulkanBuffer&>(buffer);
+  VkBuffer vk_buf = vk_buffer.GetVkBuffer();
   const VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(m_CommandBuffer, binding, 1, &vk_buffer, &offset);
+  vkCmdBindVertexBuffers(m_CommandBuffer, binding, 1, &vk_buf, &offset);
 }
 
-void RHICommandBuffer<VulkanBackend>::BindIndexBuffer(
-    const VulkanBuffer& buffer)
+void VulkanCommandBuffer::BindIndexBuffer(const RHIBuffer& buffer)
 {
-  VkBuffer vk_buffer = buffer.GetVkBuffer();
+  const auto& vk_buffer = dynamic_cast<const VulkanBuffer&>(buffer);
+  VkBuffer vk_buf = vk_buffer.GetVkBuffer();
   const VkDeviceSize offset = 0;
-  vkCmdBindIndexBuffer(
-      m_CommandBuffer, vk_buffer, offset, VK_INDEX_TYPE_UINT32);
+  vkCmdBindIndexBuffer(m_CommandBuffer, vk_buf, offset, VK_INDEX_TYPE_UINT32);
 }
 
-void RHICommandBuffer<VulkanBackend>::SetVertexInput(
-    const VertexInputLayout& layout)
+void VulkanCommandBuffer::SetVertexInput(const VertexInputLayout& layout)
 {
   std::vector<VkVertexInputBindingDescription2EXT> bindings;
   std::vector<VkVertexInputAttributeDescription2EXT> attributes;
@@ -351,8 +415,7 @@ void RHICommandBuffer<VulkanBackend>::SetVertexInput(
                          attributes.data());
 }
 
-void RHICommandBuffer<VulkanBackend>::SetPrimitiveTopology(
-    PrimitiveTopology topology)
+void VulkanCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
 {
   VkPrimitiveTopology vk_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   switch (topology) {
@@ -375,10 +438,31 @@ void RHICommandBuffer<VulkanBackend>::SetPrimitiveTopology(
   vkCmdSetPrimitiveTopology(m_CommandBuffer, vk_topology);
 }
 
-void RHICommandBuffer<VulkanBackend>::Draw(uint32_t vertex_count,
-                                           uint32_t instance_count,
-                                           uint32_t first_vertex,
-                                           uint32_t first_instance)
+void VulkanCommandBuffer::BindDescriptorSet(
+    uint32_t set_index,
+    const RHIDescriptorSet& descriptor_set,
+    const RHIPipelineLayout& layout)
+{
+  const auto& vk_descriptor_set =
+      dynamic_cast<const VulkanDescriptorSet&>(descriptor_set);
+  const auto& vk_layout = dynamic_cast<const VulkanPipelineLayout&>(layout);
+
+  VkDescriptorSet vk_set = vk_descriptor_set.GetVkDescriptorSet();
+
+  vkCmdBindDescriptorSets(m_CommandBuffer,
+                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          vk_layout.GetVkPipelineLayout(),
+                          set_index,
+                          1,
+                          &vk_set,
+                          0,
+                          nullptr);
+}
+
+void VulkanCommandBuffer::Draw(uint32_t vertex_count,
+                               uint32_t instance_count,
+                               uint32_t first_vertex,
+                               uint32_t first_instance)
 {
   vkCmdDraw(m_CommandBuffer,
             vertex_count,
@@ -387,16 +471,16 @@ void RHICommandBuffer<VulkanBackend>::Draw(uint32_t vertex_count,
             first_instance);
 }
 
-void RHICommandBuffer<VulkanBackend>::DrawIndexed(uint32_t index_count,
-                                                  uint32_t instance_count,
-                                                  uint32_t first_index,
-                                                  uint32_t vertex_offset,
-                                                  uint32_t first_instance)
+void VulkanCommandBuffer::DrawIndexed(uint32_t index_count,
+                                      uint32_t instance_count,
+                                      uint32_t first_index,
+                                      int32_t vertex_offset,
+                                      uint32_t first_instance)
 {
   vkCmdDrawIndexed(m_CommandBuffer,
                    index_count,
                    instance_count,
                    first_index,
-                   static_cast<int>(vertex_offset),
+                   vertex_offset,
                    first_instance);
 }

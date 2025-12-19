@@ -12,3 +12,4 @@ api = "OpenGL"
 # OpenGL: Enables debug output
 # Vulkan: Enables VK_LAYER_KHRONOS_validation
 validation = true
+depth = true

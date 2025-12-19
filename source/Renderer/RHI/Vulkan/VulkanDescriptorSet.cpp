@@ -128,7 +128,8 @@ void VulkanDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
   const auto* vk_sampler = dynamic_cast<const VulkanSampler*>(sampler);
 
   if (vk_texture == nullptr || vk_sampler == nullptr) {
-    Logger::Error("[Vulkan] WriteCombinedImageSampler: Invalid texture or sampler");
+    Logger::Error(
+        "[Vulkan] WriteCombinedImageSampler: Invalid texture or sampler");
     return;
   }
 

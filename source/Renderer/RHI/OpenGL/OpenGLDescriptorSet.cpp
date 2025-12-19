@@ -55,7 +55,8 @@ void OpenGLDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
   const auto* gl_sampler = dynamic_cast<const OpenGLSampler*>(sampler);
 
   if (gl_texture == nullptr || gl_sampler == nullptr) {
-    Logger::Error("[OpenGL] WriteCombinedImageSampler: Invalid texture or sampler");
+    Logger::Error(
+        "[OpenGL] WriteCombinedImageSampler: Invalid texture or sampler");
     return;
   }
 
@@ -83,7 +84,9 @@ void OpenGLDescriptorSet::Bind() const
 
   // Bind textures and samplers
   for (const auto& [binding, texture_binding] : m_TextureBindings) {
-    if (texture_binding.Texture == nullptr || texture_binding.Sampler == nullptr) {
+    if (texture_binding.Texture == nullptr
+        || texture_binding.Sampler == nullptr)
+    {
       continue;
     }
 

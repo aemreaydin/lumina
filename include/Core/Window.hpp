@@ -60,6 +60,7 @@ public:
   virtual void SetVSync(bool enabled) = 0;
   [[nodiscard]] virtual auto IsVSync() const -> bool = 0;
   [[nodiscard]] virtual auto ShouldClose() const -> bool = 0;
+  virtual void RequestClose() = 0;
 
   [[nodiscard]] virtual auto GetNativeWindow() const -> void* = 0;
 

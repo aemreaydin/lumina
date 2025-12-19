@@ -13,6 +13,7 @@ struct RendererConfig
 {
   RenderAPI API = RenderAPI::OpenGL;
   bool EnableValidation = true;
+  bool EnableDepth = true;
 };
 
 #endif

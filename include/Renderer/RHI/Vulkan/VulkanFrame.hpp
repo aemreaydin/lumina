@@ -3,8 +3,7 @@
 
 #include <volk.h>
 
-#include "Renderer/RHI/RHICommandBuffer.hpp"
-#include "Renderer/RHI/Vulkan/VulkanBackend.hpp"
+#include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 
 struct VulkanFrame
 {
@@ -12,7 +11,7 @@ struct VulkanFrame
   VkSemaphore ImageAvailableSemaphore {VK_NULL_HANDLE};
   VkFence InFlightFence {VK_NULL_HANDLE};
   VkCommandPool CommandPool {VK_NULL_HANDLE};
-  RHICommandBuffer<VulkanBackend> CommandBuffer;
+  VulkanCommandBuffer CommandBuffer;
 };
 
 #endif

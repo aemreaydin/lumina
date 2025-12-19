@@ -40,9 +40,12 @@ auto ConfigLoader::LoadRendererConfig(const std::filesystem::path& config_path)
         }
       }
 
-      // Read validation
       if (const auto* validation = renderer->get("validation")) {
         config.EnableValidation = validation->value_or(true);
+      }
+
+      if (const auto* depth = renderer->get("depth")) {
+        config.EnableDepth = depth->value_or(true);
       }
     }
 
@@ -51,6 +54,7 @@ auto ConfigLoader::LoadRendererConfig(const std::filesystem::path& config_path)
                  config.API == RenderAPI::Vulkan ? "Vulkan" : "OpenGL");
     Logger::Info("  Validation: {}",
                  config.EnableValidation ? "enabled" : "disabled");
+    Logger::Info("  Depth: {}", config.EnableDepth ? "enabled" : "disabled");
 
   } catch (const toml::parse_error& err) {
     Logger::Error("Failed to parse config file: {}", err.description());
@@ -100,6 +104,7 @@ void ConfigLoader::SaveRendererConfig(const RendererConfig& config,
   renderer.insert_or_assign(
       "api", config.API == RenderAPI::Vulkan ? "Vulkan" : "OpenGL");
   renderer.insert_or_assign("validation", config.EnableValidation);
+  renderer.insert_or_assign("depth", config.EnableDepth);
 
   toml_config.insert_or_assign("renderer", renderer);
 
@@ -120,5 +125,6 @@ auto ConfigLoader::CreateDefaultConfig() -> RendererConfig
   RendererConfig config;
   config.API = RenderAPI::OpenGL;
   config.EnableValidation = true;
+  config.EnableDepth = true;
   return config;
 }

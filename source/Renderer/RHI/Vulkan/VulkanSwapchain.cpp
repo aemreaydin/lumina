@@ -21,10 +21,12 @@ VulkanSwapchain::VulkanSwapchain(VulkanDevice& device, SDL_Window* window)
   m_Height = static_cast<uint32_t>(height);
 
   create_swapchain();
+  create_depth_buffer();
 }
 
 VulkanSwapchain::~VulkanSwapchain()
 {
+  cleanup_depth_buffer();
   cleanup_swapchain();
   vkDestroySwapchainKHR(m_Device.GetVkDevice(), m_Swapchain, nullptr);
 }
@@ -69,8 +71,10 @@ void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
 
   m_Device.WaitIdle();
 
+  cleanup_depth_buffer();
   cleanup_swapchain();
   create_swapchain();
+  create_depth_buffer();
   destroy_old_swapchain();
   Logger::Trace("[Vulkan] Swapchain resized successfully");
 }
@@ -251,5 +255,122 @@ void VulkanSwapchain::destroy_old_swapchain()
   if (m_OldSwapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(m_Device.GetVkDevice(), m_OldSwapchain, nullptr);
     m_OldSwapchain = VK_NULL_HANDLE;
+  }
+}
+
+void VulkanSwapchain::create_depth_buffer()
+{
+  VkDevice device = m_Device.GetVkDevice();
+  VkPhysicalDevice physical_device = m_Device.GetVkPhysicalDevice();
+
+  VkImageCreateInfo image_info {};
+  image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  image_info.imageType = VK_IMAGE_TYPE_2D;
+  image_info.format = m_DepthFormat;
+  image_info.extent.width = m_Width;
+  image_info.extent.height = m_Height;
+  image_info.extent.depth = 1;
+  image_info.mipLevels = 1;
+  image_info.arrayLayers = 1;
+  image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+  image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+  image_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+  if (auto result = VkUtils::Check(
+          vkCreateImage(device, &image_info, nullptr, &m_DepthImage));
+      !result)
+  {
+    throw std::runtime_error(std::format("Failed to create depth image: {}",
+                                         VkUtils::ToString(result.error())));
+  }
+
+  VkMemoryRequirements mem_requirements {};
+  vkGetImageMemoryRequirements(device, m_DepthImage, &mem_requirements);
+
+  VkPhysicalDeviceMemoryProperties mem_properties {};
+  vkGetPhysicalDeviceMemoryProperties(physical_device, &mem_properties);
+
+  uint32_t memory_type_index = UINT32_MAX;
+  for (uint32_t i = 0; i < mem_properties.memoryTypeCount; ++i) {
+    if ((mem_requirements.memoryTypeBits & (1 << i)) != 0
+        && (mem_properties.memoryTypes[i].propertyFlags
+            & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+            == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    {
+      memory_type_index = i;
+      break;
+    }
+  }
+
+  if (memory_type_index == UINT32_MAX) {
+    throw std::runtime_error(
+        "Failed to find suitable memory type for depth buffer");
+  }
+
+  VkMemoryAllocateInfo alloc_info {};
+  alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  alloc_info.allocationSize = mem_requirements.size;
+  alloc_info.memoryTypeIndex = memory_type_index;
+
+  if (auto result = VkUtils::Check(
+          vkAllocateMemory(device, &alloc_info, nullptr, &m_DepthImageMemory));
+      !result)
+  {
+    throw std::runtime_error(
+        std::format("Failed to allocate depth image memory: {}",
+                    VkUtils::ToString(result.error())));
+  }
+
+  if (auto result = VkUtils::Check(
+          vkBindImageMemory(device, m_DepthImage, m_DepthImageMemory, 0));
+      !result)
+  {
+    throw std::runtime_error(
+        std::format("Failed to bind depth image memory: {}",
+                    VkUtils::ToString(result.error())));
+  }
+
+  VkImageViewCreateInfo view_info {};
+  view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  view_info.image = m_DepthImage;
+  view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  view_info.format = m_DepthFormat;
+  view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  view_info.subresourceRange.baseMipLevel = 0;
+  view_info.subresourceRange.levelCount = 1;
+  view_info.subresourceRange.baseArrayLayer = 0;
+  view_info.subresourceRange.layerCount = 1;
+
+  if (auto result = VkUtils::Check(
+          vkCreateImageView(device, &view_info, nullptr, &m_DepthImageView));
+      !result)
+  {
+    throw std::runtime_error(
+        std::format("Failed to create depth image view: {}",
+                    VkUtils::ToString(result.error())));
+  }
+
+  Logger::Trace("[Vulkan] Created depth buffer {}x{}", m_Width, m_Height);
+}
+
+void VulkanSwapchain::cleanup_depth_buffer()
+{
+  VkDevice device = m_Device.GetVkDevice();
+
+  if (m_DepthImageView != VK_NULL_HANDLE) {
+    vkDestroyImageView(device, m_DepthImageView, nullptr);
+    m_DepthImageView = VK_NULL_HANDLE;
+  }
+
+  if (m_DepthImage != VK_NULL_HANDLE) {
+    vkDestroyImage(device, m_DepthImage, nullptr);
+    m_DepthImage = VK_NULL_HANDLE;
+  }
+
+  if (m_DepthImageMemory != VK_NULL_HANDLE) {
+    vkFreeMemory(device, m_DepthImageMemory, nullptr);
+    m_DepthImageMemory = VK_NULL_HANDLE;
   }
 }

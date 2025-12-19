@@ -7,33 +7,42 @@
 
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLBuffer.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLDescriptorSet.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLShaderModule.hpp"
 
-void RHICommandBuffer<OpenGLBackend>::Begin()
+void OpenGLCommandBuffer::Begin()
 {
   Logger::Trace("[OpenGL] Begin command buffer recording");
   m_Recording = true;
 }
 
-void RHICommandBuffer<OpenGLBackend>::End()
+void OpenGLCommandBuffer::End()
 {
   Logger::Trace("[OpenGL] End command buffer recording");
   m_Recording = false;
 }
 
-void RHICommandBuffer<OpenGLBackend>::BeginRenderPass(
-    const RenderPassInfo& info)
+void OpenGLCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
 {
   Logger::Trace("[OpenGL] Begin render pass ({}x{})", info.Width, info.Height);
   m_CurrentRenderPass = info;
 
-  // Set viewport
   glViewport(0,
              0,
              static_cast<GLsizei>(info.Width),
              static_cast<GLsizei>(info.Height));
+  glFrontFace(GL_CCW);
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
 
-  // Handle load operation
+  if (info.DepthStencilAttachment != nullptr) {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+  } else {
+    glDisable(GL_DEPTH_TEST);
+  }
+
   if (info.ColorAttachment.ColorLoadOp == LoadOp::Clear) {
     const auto& clear = info.ColorAttachment.ClearColor;
     glClearColor(clear.R, clear.G, clear.B, clear.A);
@@ -56,28 +65,19 @@ void RHICommandBuffer<OpenGLBackend>::BeginRenderPass(
   }
 }
 
-void RHICommandBuffer<OpenGLBackend>::EndRenderPass()
+void OpenGLCommandBuffer::EndRenderPass()
 {
   Logger::Trace("[OpenGL] End render pass");
   m_CurrentRenderPass = {};
 }
 
-void RHICommandBuffer<OpenGLBackend>::ClearColor(float r,
-                                                 float g,
-                                                 float b,
-                                                 float a)
+void OpenGLCommandBuffer::ClearColor(float r, float g, float b, float a)
 {
   glClearColor(r, g, b, a);
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
-auto RHICommandBuffer<OpenGLBackend>::GetHandle()
-    -> OpenGLBackend::CommandBufferHandle
-{
-  return nullptr;
-}
-
-RHICommandBuffer<OpenGLBackend>::~RHICommandBuffer()
+OpenGLCommandBuffer::~OpenGLCommandBuffer()
 {
   if (m_CurrentProgram != 0) {
     glDeleteProgram(m_CurrentProgram);
@@ -87,11 +87,15 @@ RHICommandBuffer<OpenGLBackend>::~RHICommandBuffer()
   }
 }
 
-void RHICommandBuffer<OpenGLBackend>::BindShaders(
-    const OpenGLShaderModule* vertex_shader,
-    const OpenGLShaderModule* fragment_shader)
+void OpenGLCommandBuffer::BindShaders(const RHIShaderModule* vertex_shader,
+                                      const RHIShaderModule* fragment_shader)
 {
-  if (vertex_shader == nullptr || fragment_shader == nullptr) {
+  const auto* gl_vertex =
+      dynamic_cast<const OpenGLShaderModule*>(vertex_shader);
+  const auto* gl_fragment =
+      dynamic_cast<const OpenGLShaderModule*>(fragment_shader);
+
+  if (gl_vertex == nullptr || gl_fragment == nullptr) {
     throw std::runtime_error("Both vertex and fragment shaders are required");
   }
 
@@ -102,8 +106,8 @@ void RHICommandBuffer<OpenGLBackend>::BindShaders(
 
   // Create and link program
   m_CurrentProgram = glCreateProgram();
-  glAttachShader(m_CurrentProgram, vertex_shader->GetGLShader());
-  glAttachShader(m_CurrentProgram, fragment_shader->GetGLShader());
+  glAttachShader(m_CurrentProgram, gl_vertex->GetGLShader());
+  glAttachShader(m_CurrentProgram, gl_fragment->GetGLShader());
   glLinkProgram(m_CurrentProgram);
 
   GLint success = 0;
@@ -125,24 +129,25 @@ void RHICommandBuffer<OpenGLBackend>::BindShaders(
   Logger::Trace("[OpenGL] Bound shader program");
 }
 
-void RHICommandBuffer<OpenGLBackend>::BindVertexBuffer(
-    const OpenGLBuffer& buffer, uint32_t /*binding*/)
+void OpenGLCommandBuffer::BindVertexBuffer(const RHIBuffer& buffer,
+                                           uint32_t /*binding*/)
 {
+  const auto& gl_buffer = dynamic_cast<const OpenGLBuffer&>(buffer);
+
   if (m_VAO == 0) {
     glGenVertexArrays(1, &m_VAO);
   }
   glBindVertexArray(m_VAO);
-  glBindBuffer(GL_ARRAY_BUFFER, buffer.GetGLBuffer());
+  glBindBuffer(GL_ARRAY_BUFFER, gl_buffer.GetGLBuffer());
 }
 
-void RHICommandBuffer<OpenGLBackend>::BindIndexBuffer(
-    const OpenGLBuffer& buffer)
+void OpenGLCommandBuffer::BindIndexBuffer(const RHIBuffer& buffer)
 {
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.GetGLBuffer());
+  const auto& gl_buffer = dynamic_cast<const OpenGLBuffer&>(buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffer.GetGLBuffer());
 }
 
-void RHICommandBuffer<OpenGLBackend>::SetVertexInput(
-    const VertexInputLayout& layout)
+void OpenGLCommandBuffer::SetVertexInput(const VertexInputLayout& layout)
 {
   if (m_VAO == 0) {
     glGenVertexArrays(1, &m_VAO);
@@ -187,8 +192,7 @@ void RHICommandBuffer<OpenGLBackend>::SetVertexInput(
   }
 }
 
-void RHICommandBuffer<OpenGLBackend>::SetPrimitiveTopology(
-    PrimitiveTopology topology)
+void OpenGLCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
 {
   switch (topology) {
     case PrimitiveTopology::TriangleList:
@@ -209,10 +213,22 @@ void RHICommandBuffer<OpenGLBackend>::SetPrimitiveTopology(
   }
 }
 
-void RHICommandBuffer<OpenGLBackend>::Draw(uint32_t vertex_count,
-                                           uint32_t instance_count,
-                                           uint32_t first_vertex,
-                                           uint32_t first_instance) const
+void OpenGLCommandBuffer::BindDescriptorSet(
+    [[maybe_unused]] uint32_t set_index,
+    const RHIDescriptorSet& descriptor_set,
+    [[maybe_unused]] const RHIPipelineLayout& layout)
+{
+  // For OpenGL, we directly bind the UBOs to their binding points
+  // The set_index is ignored since OpenGL has a flat binding namespace
+  const auto& gl_descriptor_set =
+      dynamic_cast<const OpenGLDescriptorSet&>(descriptor_set);
+  gl_descriptor_set.Bind();
+}
+
+void OpenGLCommandBuffer::Draw(uint32_t vertex_count,
+                               uint32_t instance_count,
+                               uint32_t first_vertex,
+                               uint32_t first_instance)
 {
   if (instance_count == 1 && first_instance == 0) {
     glDrawArrays(m_PrimitiveMode,
@@ -227,21 +243,27 @@ void RHICommandBuffer<OpenGLBackend>::Draw(uint32_t vertex_count,
   }
 }
 
-void RHICommandBuffer<OpenGLBackend>::DrawIndexed(uint32_t index_count,
-                                                  uint32_t instance_count,
-                                                  uint32_t first_instance,
-                                                  const void* indices) const
+void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
+                                      uint32_t instance_count,
+                                      uint32_t first_index,
+                                      int32_t /*vertex_offset*/,
+                                      uint32_t first_instance)
 {
-  if (instance_count == 1 && first_instance == 0) {
+  // Calculate byte offset for first_index
+  const auto* indices = reinterpret_cast<const void*>(
+      static_cast<uintptr_t>(first_index) * sizeof(uint32_t));
+
+  if (instance_count <= 1 && first_instance == 0) {
     glDrawElements(m_PrimitiveMode,
-                   static_cast<GLint>(index_count),
+                   static_cast<GLsizei>(index_count),
                    GL_UNSIGNED_INT,
                    indices);
   } else {
-    glDrawElementsInstanced(m_PrimitiveMode,
-                            static_cast<GLint>(index_count),
-                            GL_UNSIGNED_INT,
-                            indices,
-                            static_cast<GLsizei>(instance_count));
+    glDrawElementsInstancedBaseInstance(m_PrimitiveMode,
+                                        static_cast<GLsizei>(index_count),
+                                        GL_UNSIGNED_INT,
+                                        indices,
+                                        static_cast<GLsizei>(instance_count),
+                                        first_instance);
   }
 }

@@ -22,9 +22,11 @@ public:
   void Destroy();
   void Run();
 
-  void OnEvent(void* event);
+  static void OnEvent(void* event);
 
 protected:
+  virtual void OnUpdate([[maybe_unused]] float delta_time) {}
+
   virtual void OnRender([[maybe_unused]] float delta_time) {}
 
   virtual void OnInit() {}
@@ -37,6 +39,8 @@ protected:
   {
     return *m_RHIDevice;
   }
+
+  [[nodiscard]] auto GetWindow() -> Window& { return *m_Window; }
 
 private:
   static void InitSdl();

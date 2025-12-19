@@ -9,6 +9,7 @@
 #include <volk.h>
 
 #include "Renderer/RHI/RHIDevice.hpp"
+#include "Renderer/RHI/RenderPassInfo.hpp"
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanFrame.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
@@ -37,6 +38,7 @@ public:
   void WaitIdle() override;
 
   [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
+  [[nodiscard]] auto GetCurrentCommandBuffer() -> RHICommandBuffer* override;
 
   [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
       -> std::unique_ptr<RHIBuffer> override;
@@ -56,24 +58,6 @@ public:
       -> std::unique_ptr<RHIDescriptorSet> override;
   [[nodiscard]] auto CreatePipelineLayout(const PipelineLayoutDesc& desc)
       -> std::shared_ptr<RHIPipelineLayout> override;
-
-  void BindShaders(const RHIShaderModule* vertex_shader,
-                   const RHIShaderModule* fragment_shader) override;
-  void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) override;
-  void BindIndexBuffer(const RHIBuffer& buffer) override;
-  void SetVertexInput(const VertexInputLayout& layout) override;
-  void SetPrimitiveTopology(PrimitiveTopology topology) override;
-  void BindDescriptorSet(uint32_t set_index,
-                         const RHIDescriptorSet& descriptor_set,
-                         const RHIPipelineLayout& layout) override;
-  void Draw(uint32_t vertex_count,
-            uint32_t instance_count,
-            uint32_t first_vertex,
-            uint32_t first_instance) override;
-  void DrawIndexed(uint32_t index_count,
-                   uint32_t instance_count,
-                   uint32_t first_instance,
-                   const void* indices) override;
 
   [[nodiscard]] auto GetVkInstance() const -> VkInstance { return m_Instance; }
 
@@ -130,6 +114,7 @@ private:
   SDL_Window* m_Window {nullptr};
   bool m_Initialized {false};
   bool m_ValidationEnabled {false};
+  bool m_DepthEnabled {false};
 
   std::array<VulkanFrame, MAX_FRAMES_IN_FLIGHT> m_FrameData;
   std::vector<VkSemaphore> m_RenderFinishedSemaphores;

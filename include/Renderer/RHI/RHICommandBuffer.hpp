@@ -1,11 +1,16 @@
-#ifndef RENDERER_RHI_COMMANDBUFFER_HPP
-#define RENDERER_RHI_COMMANDBUFFER_HPP
+#ifndef RENDERER_RHI_RHICOMMANDBUFFER_HPP
+#define RENDERER_RHI_RHICOMMANDBUFFER_HPP
 
-#include "RenderPassInfo.hpp"
+#include <cstdint>
 
-// Template-based command buffer for zero-overhead command recording
-// Specialized for each backend (OpenGL, Vulkan)
-template<typename Backend>
+#include "Renderer/RHI/RHIVertexLayout.hpp"
+
+class RHIBuffer;
+class RHIShaderModule;
+class RHIDescriptorSet;
+class RHIPipelineLayout;
+struct RenderPassInfo;
+
 class RHICommandBuffer
 {
 public:
@@ -14,26 +19,27 @@ public:
   RHICommandBuffer(RHICommandBuffer&&) = delete;
   auto operator=(const RHICommandBuffer&) -> RHICommandBuffer& = delete;
   auto operator=(RHICommandBuffer&&) -> RHICommandBuffer& = delete;
-  ~RHICommandBuffer() = default;
+  virtual ~RHICommandBuffer() = default;
 
-  // Command recording
-  void Begin();
-  void End();
-
-  // Render pass
-  void BeginRenderPass(const RenderPassInfo& info);
-  void EndRenderPass();
-
-  // Clear commands
-  void ClearColor(float r, float g, float b, float a);
-
-  // Get native handle
-  [[nodiscard]] auto GetHandle() -> typename Backend::CommandBufferHandle;
-
-private:
-  typename Backend::CommandBufferHandle m_Handle {};
-  bool m_Recording {false};
-  RenderPassInfo m_CurrentRenderPass {};
+  // Drawing commands
+  virtual void BindShaders(const RHIShaderModule* vertex_shader,
+                           const RHIShaderModule* fragment_shader) = 0;
+  virtual void BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding) = 0;
+  virtual void BindIndexBuffer(const RHIBuffer& buffer) = 0;
+  virtual void SetVertexInput(const VertexInputLayout& layout) = 0;
+  virtual void SetPrimitiveTopology(PrimitiveTopology topology) = 0;
+  virtual void BindDescriptorSet(uint32_t set_index,
+                                 const RHIDescriptorSet& descriptor_set,
+                                 const RHIPipelineLayout& layout) = 0;
+  virtual void Draw(uint32_t vertex_count,
+                    uint32_t instance_count,
+                    uint32_t first_vertex,
+                    uint32_t first_instance) = 0;
+  virtual void DrawIndexed(uint32_t index_count,
+                           uint32_t instance_count,
+                           uint32_t first_index,
+                           int32_t vertex_offset,
+                           uint32_t first_instance) = 0;
 };
 
 #endif

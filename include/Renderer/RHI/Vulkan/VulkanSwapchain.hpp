@@ -47,10 +47,21 @@ public:
     return m_CurrentImageIndex;
   }
 
+  [[nodiscard]] auto GetDepthImage() const -> VkImage { return m_DepthImage; }
+
+  [[nodiscard]] auto GetDepthImageView() const -> VkImageView
+  {
+    return m_DepthImageView;
+  }
+
+  [[nodiscard]] auto GetDepthFormat() const -> VkFormat { return m_DepthFormat; }
+
 private:
   void create_swapchain();
   void cleanup_swapchain();
   void destroy_old_swapchain();
+  void create_depth_buffer();
+  void cleanup_depth_buffer();
 
   VulkanDevice& m_Device;
   SDL_Window* m_Window {nullptr};
@@ -63,6 +74,11 @@ private:
   std::vector<VkImage> m_Images;
   std::vector<VkImageView> m_ImageViews;
   uint32_t m_CurrentImageIndex {0};
+
+  VkImage m_DepthImage {VK_NULL_HANDLE};
+  VkImageView m_DepthImageView {VK_NULL_HANDLE};
+  VkDeviceMemory m_DepthImageMemory {VK_NULL_HANDLE};
+  VkFormat m_DepthFormat {VK_FORMAT_D32_SFLOAT};
 };
 
 #endif

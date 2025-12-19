@@ -21,8 +21,7 @@
 constexpr uint32_t OPENGL_VERSION_MAJOR = 4;
 constexpr uint32_t OPENGL_VERSION_MINOR = 6;
 
-void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
-                        void* window)
+void OpenGLDevice::Init(const RendererConfig& config, void* window)
 {
   if (m_Initialized) {
     return;
@@ -33,6 +32,7 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
   }
 
   m_Window = static_cast<SDL_Window*>(window);
+  m_DepthEnabled = config.EnableDepth;
   Logger::Info("Initializing OpenGL device");
 
   // Set OpenGL attributes before context creation
@@ -69,7 +69,7 @@ void OpenGLDevice::Init([[maybe_unused]] const RendererConfig& config,
   SDL_GL_SetSwapInterval(1);
 
   // Create command buffer
-  m_CommandBuffer = std::make_unique<RHICommandBuffer<OpenGLBackend>>();
+  m_CommandBuffer = std::make_unique<OpenGLCommandBuffer>();
 
   m_Initialized = true;
   Logger::Info("OpenGL device initialized successfully");
@@ -110,7 +110,6 @@ void OpenGLDevice::BeginFrame()
     return;
   }
 
-  // Check for resize
   int width = 0;
   int height = 0;
   SDL_GetWindowSizeInPixels(m_Window, &width, &height);
@@ -123,10 +122,18 @@ void OpenGLDevice::BeginFrame()
 
   m_CommandBuffer->Begin();
 
+  DepthStencilInfo depth_stencil {};
+  depth_stencil.DepthLoadOp = LoadOp::Clear;
+  depth_stencil.DepthStoreOp = StoreOp::DontCare;
+  depth_stencil.ClearDepthStencil.Depth = 1.0F;
+
   RenderPassInfo render_pass {};
   render_pass.ColorAttachment.ColorLoadOp = LoadOp::Clear;
   render_pass.ColorAttachment.ClearColor = {
-      .R = 1.0F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+      .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+  if (m_DepthEnabled) {
+    render_pass.DepthStencilAttachment = &depth_stencil;
+  }
   render_pass.Width = m_Swapchain->GetWidth();
   render_pass.Height = m_Swapchain->GetHeight();
 
@@ -153,6 +160,11 @@ void OpenGLDevice::Present()
 auto OpenGLDevice::GetSwapchain() -> RHISwapchain*
 {
   return m_Swapchain.get();
+}
+
+auto OpenGLDevice::GetCurrentCommandBuffer() -> RHICommandBuffer*
+{
+  return m_CommandBuffer.get();
 }
 
 void OpenGLDevice::WaitIdle()
@@ -192,54 +204,6 @@ auto OpenGLDevice::CreateGraphicsPipeline(
   return nullptr;
 }
 
-void OpenGLDevice::BindShaders(const RHIShaderModule* vertex_shader,
-                               const RHIShaderModule* fragment_shader)
-{
-  m_CommandBuffer->BindShaders(
-      dynamic_cast<const OpenGLShaderModule*>(vertex_shader),
-      dynamic_cast<const OpenGLShaderModule*>(fragment_shader));
-}
-
-void OpenGLDevice::BindVertexBuffer(const RHIBuffer& buffer, uint32_t binding)
-{
-  m_CommandBuffer->BindVertexBuffer(dynamic_cast<const OpenGLBuffer&>(buffer),
-                                    binding);
-}
-
-void OpenGLDevice::BindIndexBuffer(const RHIBuffer& buffer)
-{
-  RHICommandBuffer<OpenGLBackend>::BindIndexBuffer(
-      dynamic_cast<const OpenGLBuffer&>(buffer));
-}
-
-void OpenGLDevice::SetVertexInput(const VertexInputLayout& layout)
-{
-  m_CommandBuffer->SetVertexInput(layout);
-}
-
-void OpenGLDevice::SetPrimitiveTopology(PrimitiveTopology topology)
-{
-  m_CommandBuffer->SetPrimitiveTopology(topology);
-}
-
-void OpenGLDevice::Draw(uint32_t vertex_count,
-                        uint32_t instance_count,
-                        uint32_t first_vertex,
-                        uint32_t first_instance)
-{
-  m_CommandBuffer->Draw(
-      vertex_count, instance_count, first_vertex, first_instance);
-}
-
-void OpenGLDevice::DrawIndexed(uint32_t index_count,
-                               uint32_t instance_count,
-                               uint32_t first_instance,
-                               const void* indices)
-{
-  m_CommandBuffer->DrawIndexed(
-      index_count, instance_count, first_instance, indices);
-}
-
 auto OpenGLDevice::CreateDescriptorSetLayout(
     const DescriptorSetLayoutDesc& desc)
     -> std::shared_ptr<RHIDescriptorSetLayout>
@@ -258,16 +222,4 @@ auto OpenGLDevice::CreatePipelineLayout(const PipelineLayoutDesc& desc)
     -> std::shared_ptr<RHIPipelineLayout>
 {
   return std::make_shared<OpenGLPipelineLayout>(desc);
-}
-
-void OpenGLDevice::BindDescriptorSet(
-    [[maybe_unused]] uint32_t set_index,
-    const RHIDescriptorSet& descriptor_set,
-    [[maybe_unused]] const RHIPipelineLayout& layout)
-{
-  // For OpenGL, we directly bind the UBOs to their binding points
-  // The set_index is ignored since OpenGL has a flat binding namespace
-  const auto& gl_descriptor_set =
-      dynamic_cast<const OpenGLDescriptorSet&>(descriptor_set);
-  gl_descriptor_set.Bind();
 }

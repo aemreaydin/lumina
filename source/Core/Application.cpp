@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include "Core/ConfigLoader.hpp"
+#include "Core/Input.hpp"
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
 
@@ -17,12 +18,11 @@ void Application::Init()
 
   InitSdl();
 
-  // Create window with render API info
   WindowProps props;
   props.API = m_RendererConfig.API;
   m_Window = Window::Create(props);
-  m_Window->SetEventCallback([this](void* event) -> void
-                             { this->OnEvent(event); });
+  m_Window->SetEventCallback([](void* event) -> void
+                             { Application::OnEvent(event); });
 
   m_RHIDevice = RHIDevice::Create(m_RendererConfig);
 
@@ -71,9 +71,9 @@ void Application::InitSdl()
   Logger::Info("SDL3 initialized successfully");
 }
 
-void Application::OnEvent([[maybe_unused]] void* event)
+void Application::OnEvent(void* event)
 {
-  Logger::Info("Event received: {}", m_Window->GetWidth());
+  Input::ProcessEvent(event);
 }
 
 void Application::Run()
@@ -88,7 +88,10 @@ void Application::Run()
         / static_cast<float>(frequency);
     m_LastFrameTime = current_time;
 
-    // Poll events
+    // Reset input state for new frame
+    Input::BeginFrame();
+
+    // Poll events (forwards to Input::ProcessEvent via OnEvent callback)
     m_Window->OnUpdate();
 
     // Check for window close
@@ -97,6 +100,9 @@ void Application::Run()
       m_Running = false;
       continue;
     }
+
+    // Update game logic
+    OnUpdate(delta_time);
 
     // Begin rendering
     m_RHIDevice->BeginFrame();

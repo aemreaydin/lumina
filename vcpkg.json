@@ -5,18 +5,12 @@
     {
       "name": "glad",
       "version>=": "0.1.36",
-      "features": [
-        "gl-api-46"
-      ]
+      "features": ["gl-api-46"]
     },
     {
       "name": "sdl3",
       "version>=": "3.2.28",
-      "features": [
-        "vulkan",
-        "wayland",
-        "x11"
-      ]
+      "features": ["vulkan", "wayland", "x11"]
     },
     {
       "name": "spdlog",
@@ -45,6 +39,10 @@
     {
       "name": "stb",
       "version>=": "2024-07-29#1"
+    },
+    {
+      "name": "tinyobjloader",
+      "version>=": "2.0.0rc13#0"
     }
   ],
   "default-features": [],

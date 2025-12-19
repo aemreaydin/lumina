@@ -81,6 +81,10 @@ void LinuxWindow::OnUpdate()
 
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP:
+      case SDL_EVENT_MOUSE_MOTION:
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case SDL_EVENT_MOUSE_BUTTON_UP:
+      case SDL_EVENT_MOUSE_WHEEL:
         if (m_WindowProps.EventCallback) {
           m_WindowProps.EventCallback(&event);
         }

@@ -20,24 +20,34 @@ function(add_example NAME)
   add_dependencies(run-examples "run_${NAME}")
 endfunction()
 
-add_example(sandbox)
+add_example(triangle)
+add_example(texture)
+add_example(depth)
 
-# Copy config.toml to the example build directory
-add_custom_command(
-    TARGET sandbox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/config.toml"
-        "$<TARGET_FILE_DIR:sandbox>/config.toml"
-    COMMENT "Copying config.toml to example directory"
-)
+foreach(EXAMPLE_TARGET triangle texture depth)
+    add_custom_command(
+        TARGET ${EXAMPLE_TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/config.toml"
+            "$<TARGET_FILE_DIR:${EXAMPLE_TARGET}>/config.toml"
+        COMMENT "Copying config.toml to ${EXAMPLE_TARGET} directory"
+    )
 
-# Copy shaders to the example build directory
-add_custom_command(
-    TARGET sandbox POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
-        "$<TARGET_FILE_DIR:sandbox>/shaders"
-    COMMENT "Copying shaders to example directory"
-)
+    add_custom_command(
+        TARGET ${EXAMPLE_TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+            "$<TARGET_FILE_DIR:${EXAMPLE_TARGET}>/shaders"
+        COMMENT "Copying shaders to ${EXAMPLE_TARGET} directory"
+    )
+
+    add_custom_command(
+        TARGET ${EXAMPLE_TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:${EXAMPLE_TARGET}>/assets"
+        COMMENT "Copying assets to ${EXAMPLE_TARGET} directory"
+    )
+endforeach()
 
 add_folders(Example)

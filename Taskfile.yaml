@@ -25,7 +25,9 @@ tasks:
       - example/**/*.cpp
       - example/**/*.hpp
     generates:
-      - build/dev/example/sandbox{{exeExt}}
+      - build/dev/example/triangle{{exeExt}}
+      - build/dev/example/texture{{exeExt}}
+      - build/dev/example/depth{{exeExt}}
     cmds:
       - cmake --build --preset=dev
 
@@ -49,11 +51,13 @@ tasks:
       - cp config.toml build/dev/example/
 
   run:
-    desc: Run the Sandbox application
+    desc: Run an example application (default = depth)
     deps: [build, assets]
     dir: build/dev/example
+    vars:
+      EXAMPLE: '{{.EXAMPLE | default "depth"}}'
     cmds:
-      - ./sandbox{{exeExt}}
+      - ./{{.EXAMPLE}}{{exeExt}}
 
   clean:
     desc: Clean build artifacts
