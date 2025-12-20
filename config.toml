@@ -2,7 +2,7 @@
 
 [logger]
 # Level: "trace" or "debug" or "info" or "warn" or "err" or "critical"
-level = "info"
+level = "trace"
 
 [renderer]
 # Graphics API: "OpenGL" or "Vulkan"

@@ -46,6 +46,32 @@
       "name": "dev-coverage",
       "binaryDir": "${sourceDir}/build/coverage",
       "inherits": ["dev-mode", "coverage-linux", "vcpkg"]
+    },
+    {
+      "name": "simple",
+      "binaryDir": "${sourceDir}/build/simple",
+      "inherits": ["vcpkg"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "simple-release",
+      "binaryDir": "${sourceDir}/build/simple-release",
+      "inherits": ["vcpkg"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -54,6 +80,16 @@
       "configurePreset": "dev",
       "configuration": "Debug",
       "jobs": 24
+    },
+    {
+      "name": "simple",
+      "configurePreset": "simple",
+      "configuration": "Debug"
+    },
+    {
+      "name": "simple-release",
+      "configurePreset": "simple-release",
+      "configuration": "Release"
     }
   ],
   "testPresets": [

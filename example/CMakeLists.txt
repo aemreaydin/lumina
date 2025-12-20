@@ -23,8 +23,9 @@ endfunction()
 add_example(triangle)
 add_example(texture)
 add_example(depth)
+add_example(scene_demo)
 
-foreach(EXAMPLE_TARGET triangle texture depth)
+foreach(EXAMPLE_TARGET triangle texture depth scene_demo)
     add_custom_command(
         TARGET ${EXAMPLE_TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

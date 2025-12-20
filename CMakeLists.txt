@@ -29,6 +29,19 @@ add_library(
     source/Renderer/Camera.cpp
     source/Renderer/CameraController.cpp
     source/Renderer/ShaderCompiler.cpp
+    # Model
+    source/Renderer/Model/Vertex.cpp
+    source/Renderer/Model/Material.cpp
+    source/Renderer/Model/Mesh.cpp
+    source/Renderer/Model/Model.cpp
+    source/Renderer/Model/ModelLoader.cpp
+    # Asset
+    source/Renderer/Asset/AssetManager.cpp
+    # Scene
+    source/Renderer/Scene/Transform.cpp
+    source/Renderer/Scene/SceneNode.cpp
+    source/Renderer/Scene/Scene.cpp
+    source/Renderer/Scene/SceneRenderer.cpp
     # RHI
     source/Renderer/RHI/RHIDevice.cpp
     source/Renderer/RHI/OpenGL/OpenGLDevice.cpp
