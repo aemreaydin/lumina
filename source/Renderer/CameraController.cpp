@@ -7,8 +7,6 @@
 #include "Core/Input.hpp"
 #include "Renderer/Camera.hpp"
 
-// FPSCameraController implementation
-
 FPSCameraController::FPSCameraController(Camera* camera)
     : CameraController(camera)
 {
@@ -20,7 +18,6 @@ void FPSCameraController::Update(float delta_time)
     return;
   }
 
-  // Mouse look (only when right mouse button is held or mouse is captured)
   if (Input::IsMouseCaptured() || Input::IsMouseButtonDown(MouseButton::Right))
   {
     const glm::vec2 mouse_delta = Input::GetMouseDelta();
@@ -28,7 +25,6 @@ void FPSCameraController::Update(float delta_time)
                      mouse_delta.x * m_LookSensitivity);
   }
 
-  // Toggle mouse capture with right click
   if (Input::IsMouseButtonPressed(MouseButton::Right)) {
     Input::SetMouseCaptured(/*captured=*/true);
   }
@@ -36,39 +32,35 @@ void FPSCameraController::Update(float delta_time)
     Input::SetMouseCaptured(/*captured=*/false);
   }
 
-  // Escape releases mouse capture
   if (Input::IsKeyPressed(KeyCode::Escape)) {
     Input::SetMouseCaptured(/*captured=*/false);
   }
 
-  // WASD movement
   glm::vec3 movement {0.0F};
 
   if (Input::IsKeyDown(KeyCode::W)) {
-    movement.y += 1.0F;  // Forward
+    movement.y += 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::S)) {
-    movement.y -= 1.0F;  // Backward
+    movement.y -= 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::A)) {
-    movement.x -= 1.0F;  // Left
+    movement.x -= 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::D)) {
-    movement.x += 1.0F;  // Right
+    movement.x += 1.0F;
   }
-  if (Input::IsKeyDown(KeyCode::Space)) {
-    movement.z += 1.0F;  // Up
+  if (Input::IsKeyDown(KeyCode::E)) {
+    movement.z += 1.0F;
   }
-  if (Input::IsKeyDown(KeyCode::LCtrl)) {
-    movement.z -= 1.0F;  // Down
+  if (Input::IsKeyDown(KeyCode::Q)) {
+    movement.z -= 1.0F;
   }
 
-  // Normalize diagonal movement
   if (glm::length(movement) > 0.0F) {
     movement = glm::normalize(movement);
   }
 
-  // Apply speed modifier with shift
   float speed = m_MoveSpeed;
   if (Input::IsKeyDown(KeyCode::LShift)) {
     speed *= 2.0F;
@@ -76,8 +68,6 @@ void FPSCameraController::Update(float delta_time)
 
   m_Camera->MoveRelative(movement * speed * delta_time);
 }
-
-// OrbitCameraController implementation
 
 OrbitCameraController::OrbitCameraController(Camera* camera)
     : CameraController(camera)
@@ -91,20 +81,16 @@ void OrbitCameraController::Update([[maybe_unused]] float delta_time)
     return;
   }
 
-  // Orbit with left mouse button drag
   if (Input::IsMouseButtonDown(MouseButton::Left)) {
     const glm::vec2 mouse_delta = Input::GetMouseDelta();
     m_Azimuth += mouse_delta.x * m_OrbitSpeed;
     m_Elevation -= mouse_delta.y * m_OrbitSpeed;
 
-    // Clamp elevation to avoid flipping
     m_Elevation = std::clamp(m_Elevation, -89.0F, 89.0F);
   }
 
-  // Zoom with scroll wheel
   const glm::vec2 scroll = Input::GetScrollDelta();
   if (std::fabs(scroll.y) > std::numeric_limits<float>::epsilon()) {
-    // Create window with render API info
     m_Distance -= scroll.y * m_ZoomSpeed;
     m_Distance = std::clamp(m_Distance, m_MinDistance, m_MaxDistance);
   }
@@ -138,8 +124,6 @@ void OrbitCameraController::update_camera_position()
     return;
   }
 
-  // Convert spherical coordinates to Cartesian
-  // Z-up coordinate system
   const float azimuth_rad = glm::radians(m_Azimuth);
   const float elevation_rad = glm::radians(m_Elevation);
 

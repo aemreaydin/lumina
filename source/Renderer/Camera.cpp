@@ -30,10 +30,8 @@ void Camera::SetTarget(const glm::vec3& target)
 {
   const glm::vec3 direction = glm::normalize(target - m_Position);
 
-  // Calculate pitch (angle from horizontal plane)
   m_Pitch = glm::degrees(std::asin(direction.z));
 
-  // Calculate yaw (angle in XY plane)
   m_Yaw = glm::degrees(std::atan2(direction.y, direction.x));
 
   update_direction_vectors();
@@ -129,7 +127,6 @@ void Camera::Move(const glm::vec3& offset)
 
 void Camera::MoveRelative(const glm::vec3& offset)
 {
-  // offset.x = right, offset.y = forward, offset.z = up
   m_Position += m_Right * offset.x;
   m_Position += m_Forward * offset.y;
   m_Position += m_Up * offset.z;
@@ -141,7 +138,6 @@ void Camera::Rotate(float delta_pitch, float delta_yaw)
   m_Pitch += delta_pitch;
   m_Yaw += delta_yaw;
 
-  // Clamp pitch to avoid gimbal lock
   m_Pitch = std::clamp(m_Pitch, -89.0F, 89.0F);
 
   update_direction_vectors();
@@ -170,10 +166,6 @@ void Camera::recalculate_projection_matrix()
 
 void Camera::update_direction_vectors()
 {
-  // Calculate forward vector from pitch and yaw
-  // In Z-up coordinate system:
-  // - Yaw rotates around Z axis (in XY plane)
-  // - Pitch rotates up/down from horizontal
   const float pitch_rad = glm::radians(m_Pitch);
   const float yaw_rad = glm::radians(m_Yaw);
 
@@ -182,9 +174,7 @@ void Camera::update_direction_vectors()
   m_Forward.z = std::sin(pitch_rad);
   m_Forward = glm::normalize(m_Forward);
 
-  // Right vector is perpendicular to forward and world up
   m_Right = glm::normalize(glm::cross(m_Forward, WORLD_UP));
 
-  // Up vector is perpendicular to right and forward
   m_Up = glm::normalize(glm::cross(m_Right, m_Forward));
 }
