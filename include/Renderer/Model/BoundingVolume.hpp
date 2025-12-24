@@ -58,7 +58,7 @@ struct AABB
     }
 
     // Get all 8 corners of the AABB
-    std::array<glm::vec3, 8> corners = {
+    const std::array<glm::vec3, 8> corners = {
         glm::vec3 {Min.x, Min.y, Min.z},
         glm::vec3 {Max.x, Min.y, Min.z},
         glm::vec3 {Min.x, Max.y, Min.z},
@@ -71,7 +71,7 @@ struct AABB
 
     AABB result {};
     for (const auto& corner : corners) {
-      glm::vec4 transformed = matrix * glm::vec4(corner, 1.0F);
+      const glm::vec4 transformed = matrix * glm::vec4(corner, 1.0F);
       result.Expand(glm::vec3(transformed));
     }
 

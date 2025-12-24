@@ -5,6 +5,8 @@
 
 #include <glm/glm.hpp>
 
+#include "Renderer/RHI/RHIPipeline.hpp"
+
 class Scene;
 class SceneNode;
 class Camera;
@@ -65,7 +67,6 @@ private:
   void create_pipeline_layout();
   void create_camera_resources();
   void update_camera_ubo(const Camera& camera);
-  void update_node_ubo(const SceneNode& node);
 
   RHIDevice& m_Device;
   AssetManager& m_AssetManager;
@@ -85,7 +86,7 @@ private:
 
   // Per-node resources (reused each frame)
   std::unique_ptr<RHIBuffer> m_NodeUBO;
-  std::unique_ptr<RHIDescriptorSet> m_NodeDescriptorSet;
+  PushConstant m_NodePushConstant;
 };
 
 #endif

@@ -3,12 +3,12 @@
 
 #include <cstdint>
 
+#include "Renderer/RHI/RHIPipeline.hpp"
+#include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/RHI/RHIVertexLayout.hpp"
 
 class RHIBuffer;
-class RHIShaderModule;
 class RHIDescriptorSet;
-class RHIPipelineLayout;
 struct RenderPassInfo;
 
 class RHICommandBuffer
@@ -40,6 +40,11 @@ public:
                            uint32_t first_index,
                            int32_t vertex_offset,
                            uint32_t first_instance) = 0;
+
+  // Push constants
+  virtual void PushConstants(const RHIPipelineLayout& layout,
+                             const PushConstant& push_constant,
+                             const void* data) = 0;
 };
 
 #endif

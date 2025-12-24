@@ -267,3 +267,13 @@ void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
                                         first_instance);
   }
 }
+
+void OpenGLCommandBuffer::PushConstants(
+    [[maybe_unused]] const RHIPipelineLayout& layout,
+    [[maybe_unused]] const PushConstant& push_constant,
+    [[maybe_unused]] const void* data)
+{
+  // OpenGL doesn't have native push constants
+  // TODO: Implement via uniform buffer or direct uniform upload
+  Logger::Warn("PushConstants not implemented for OpenGL backend");
+}

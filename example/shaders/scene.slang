@@ -35,7 +35,7 @@ struct NodeData
     float4x4 normalMatrix;
 };
 
-[[vk::binding(0, 1)]]
+[[vk::push_constant]]
 ConstantBuffer<NodeData> node;
 
 // Set 2: Material data
@@ -50,13 +50,13 @@ struct MaterialProperties
     uint flags;
 };
 
-[[vk::binding(0, 2)]]
+[[vk::binding(0, 1)]]
 ConstantBuffer<MaterialProperties> material;
 
-[[vk::binding(1, 2)]]
+[[vk::binding(1, 1)]]
 Sampler2D baseColorTex;
 
-[[vk::binding(2, 2)]]
+[[vk::binding(2, 1)]]
 Sampler2D normalTex;
 
 [shader("vertex")]

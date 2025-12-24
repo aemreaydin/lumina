@@ -32,6 +32,16 @@ VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
     }
   }
 
+  std::vector<VkPushConstantRange> vk_push_constants(desc.PushConstants.size());
+  for (const auto& [index, push_constant] :
+       std::ranges::views::enumerate(desc.PushConstants))
+  {
+    vk_push_constants.at(static_cast<size_t>(index)) = {
+        .stageFlags = VkUtils::ToVkShaderStage(push_constant.Stages),
+        .offset = push_constant.Offset,
+        .size = push_constant.Size};
+  }
+
   VkShaderCreateInfoEXT create_info {};
   create_info.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
   create_info.stage = VkUtils::ToVkShaderStage(m_Stage);
@@ -42,6 +52,9 @@ VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
   create_info.pName = m_EntryPoint.c_str();
   create_info.setLayoutCount = static_cast<uint32_t>(vk_set_layouts.size());
   create_info.pSetLayouts = vk_set_layouts.data();
+  create_info.pushConstantRangeCount =
+      static_cast<uint32_t>(vk_push_constants.size());
+  create_info.pPushConstantRanges = vk_push_constants.data();
 
   if (auto result = VkUtils::Check(vkCreateShadersEXT(
           m_Device.GetVkDevice(), 1, &create_info, nullptr, &m_Shader));

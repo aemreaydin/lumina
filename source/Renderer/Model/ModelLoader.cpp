@@ -38,9 +38,173 @@ struct VertexHash
   }
 };
 
+static auto NormalizeTexturePath(const std::filesystem::path& model_path,
+                                 const std::string& tex_name) -> std::string
+{
+  std::string tex_path =
+      std::filesystem::absolute(model_path.parent_path() / tex_name);
+  std::ranges::replace(tex_path, '\\', '/');
+  return tex_path;
+}
+
+static auto LoadMaterialTexture(AssetManager& asset_manager,
+                                const std::filesystem::path& model_path,
+                                const std::string& tex_name,
+                                bool is_srgb) -> std::shared_ptr<RHITexture>
+{
+  if (tex_name.empty()) {
+    return nullptr;
+  }
+
+  const auto tex_path = NormalizeTexturePath(model_path, tex_name);
+  TextureLoadOptions tex_options {};
+  tex_options.SRGB = is_srgb;
+  return asset_manager.LoadTexture(tex_path, tex_options);
+}
+
+static auto CreateMaterialFromTinyobj(const tinyobj::material_t& mat,
+                                      const std::filesystem::path& model_path,
+                                      AssetManager& asset_manager)
+    -> std::unique_ptr<Material>
+{
+  auto material = std::make_unique<Material>(mat.name);
+
+  // Set base color from diffuse
+  material->SetBaseColorFactor(
+      glm::vec4(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0F));
+
+  // Estimate metallic/roughness from specular
+  const float specular_avg =
+      (mat.specular[0] + mat.specular[1] + mat.specular[2]) / 3.0F;
+  material->SetMetallicFactor(specular_avg > 0.5F ? 0.5F : 0.0F);
+  material->SetRoughnessFactor(1.0F - (mat.shininess / 1000.0F));
+
+  // Load diffuse texture
+  if (auto texture = LoadMaterialTexture(
+          asset_manager, model_path, mat.diffuse_texname, /*is_srgb=*/true))
+  {
+    material->SetBaseColorTexture(texture);
+  }
+
+  // Load normal map
+  if (auto texture = LoadMaterialTexture(
+          asset_manager, model_path, mat.bump_texname, /*is_srgb=*/false))
+  {
+    material->SetNormalTexture(texture);
+  }
+
+  return material;
+}
+
+static auto ExtractVertex(const tinyobj::attrib_t& attrib,
+                          const tinyobj::index_t& idx,
+                          const ModelLoadOptions& options) -> Vertex
+{
+  Vertex vertex {};
+
+  // Position
+  vertex.Position = {
+      attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 0]
+          * options.Scale,
+      attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 1]
+          * options.Scale,
+      attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 2]
+          * options.Scale,
+  };
+
+  // Normal
+  if (idx.normal_index >= 0 && !attrib.normals.empty()) {
+    vertex.Normal = {
+        attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 0],
+        attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 1],
+        attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 2],
+    };
+  }
+
+  // TexCoord
+  if (idx.texcoord_index >= 0 && !attrib.texcoords.empty()) {
+    const float tex_u =
+        attrib.texcoords[(2 * static_cast<size_t>(idx.texcoord_index)) + 0];
+    const float tex_v =
+        attrib.texcoords[(2 * static_cast<size_t>(idx.texcoord_index)) + 1];
+    vertex.TexCoord = {tex_u, options.FlipUVs ? (1.0F - tex_v) : tex_v};
+  }
+
+  return vertex;
+}
+
+static auto ProcessShape(const tinyobj::shape_t& shape,
+                         const tinyobj::attrib_t& attrib,
+                         const ModelLoadOptions& options,
+                         size_t material_count) -> std::unique_ptr<Mesh>
+{
+  auto mesh = std::make_unique<Mesh>(shape.name);
+
+  std::vector<Vertex> vertices;
+  std::unordered_map<Vertex, uint32_t, VertexHash> unique_vertices;
+  std::map<int, std::vector<uint32_t>> indices_by_material;
+
+  size_t index_offset = 0;
+  for (size_t face_idx = 0; face_idx < shape.mesh.num_face_vertices.size();
+       ++face_idx)
+  {
+    const size_t num_verts = shape.mesh.num_face_vertices[face_idx];
+    int material_id =
+        shape.mesh.material_ids.empty() ? 0 : shape.mesh.material_ids[face_idx];
+    material_id = std::max(material_id, 0);
+
+    for (size_t vert = 0; vert < num_verts; ++vert) {
+      const auto& idx = shape.mesh.indices[index_offset + vert];
+      const Vertex vertex = ExtractVertex(attrib, idx, options);
+
+      if (!unique_vertices.contains(vertex)) {
+        unique_vertices[vertex] = static_cast<uint32_t>(vertices.size());
+        vertices.push_back(vertex);
+      }
+
+      indices_by_material[material_id].push_back(unique_vertices[vertex]);
+    }
+
+    index_offset += num_verts;
+  }
+
+  // Combine indices in material order
+  std::vector<uint32_t> indices;
+  std::vector<std::tuple<uint32_t, uint32_t, int>> submesh_ranges;
+
+  for (const auto& [mat_id, mat_indices] : indices_by_material) {
+    auto start_offset = static_cast<uint32_t>(indices.size());
+    auto count = static_cast<uint32_t>(mat_indices.size());
+    indices.insert(indices.end(), mat_indices.begin(), mat_indices.end());
+    submesh_ranges.emplace_back(start_offset, count, mat_id);
+  }
+
+  mesh->SetVertices(std::move(vertices));
+  mesh->SetIndices(std::move(indices));
+
+  if (options.CalculateTangents) {
+    mesh->ComputeTangents();
+  }
+
+  // Add submeshes
+  for (const auto& [start_offset, count, mat_id] : submesh_ranges) {
+    auto mat_index = static_cast<uint32_t>(mat_id);
+    if (mat_index >= material_count) {
+      mat_index = 0;
+    }
+    mesh->AddSubMesh(start_offset, count, mat_index);
+  }
+
+  if (mesh->GetSubMeshCount() == 0) {
+    mesh->CreateSingleSubMesh(0);
+  }
+
+  return mesh;
+}
+
 auto OBJModelLoader::CanLoad(const std::filesystem::path& path) const -> bool
 {
-  auto extension = path.extension().string();
+  const auto extension = path.extension().string();
   return extension == ".obj" || extension == ".OBJ";
 }
 
@@ -60,13 +224,13 @@ auto OBJModelLoader::Load(const std::filesystem::path& path,
     base_dir += "/";
   }
 
-  bool success = tinyobj::LoadObj(&attrib,
-                                  &shapes,
-                                  &materials,
-                                  &warning,
-                                  &error,
-                                  path.string().c_str(),
-                                  base_dir.c_str());
+  const bool success = tinyobj::LoadObj(&attrib,
+                                        &shapes,
+                                        &materials,
+                                        &warning,
+                                        &error,
+                                        path.string().c_str(),
+                                        base_dir.c_str());
 
   if (!warning.empty()) {
     Logger::Warn("OBJ loader warning: {}", warning);
@@ -84,157 +248,20 @@ auto OBJModelLoader::Load(const std::filesystem::path& path,
 
   // Load materials
   for (const auto& mat : materials) {
-    auto material = std::make_unique<Material>(mat.name);
-
-    // Set base color from diffuse
-    material->SetBaseColorFactor(
-        glm::vec4(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0F));
-
-    // Estimate metallic/roughness from specular
-    float specular_avg =
-        (mat.specular[0] + mat.specular[1] + mat.specular[2]) / 3.0F;
-    material->SetMetallicFactor(specular_avg > 0.5F ? 0.5F : 0.0F);
-    material->SetRoughnessFactor(1.0F - (mat.shininess / 1000.0F));
-
-    // Load diffuse texture if present
-    // Use absolute path since the model path is already resolved
-    // Convert texture name to proper path (handles backslashes from MTL files)
-    if (!mat.diffuse_texname.empty()) {
-      std::string tex_path =
-          std::filesystem::absolute(path.parent_path() / mat.diffuse_texname);
-      std::ranges::replace(tex_path, '\\', '/');
-      auto texture = asset_manager.LoadTexture(tex_path);
-      if (texture) {
-        material->SetBaseColorTexture(texture);
-      }
-    }
-
-    // Load normal map if present
-    if (!mat.bump_texname.empty()) {
-      std::string tex_path =
-          std::filesystem::absolute(path.parent_path() / mat.bump_texname);
-      std::ranges::replace(tex_path, '\\', '/');
-      TextureLoadOptions tex_options {};
-      tex_options.SRGB = false;  // Normal maps are linear
-      auto texture = asset_manager.LoadTexture(tex_path, tex_options);
-      if (texture) {
-        material->SetNormalTexture(texture);
-      }
-    }
-
-    model->AddMaterial(std::move(material));
+    model->AddMaterial(CreateMaterialFromTinyobj(mat, path, asset_manager));
   }
 
-  // Add a default material if none were loaded
+  // Add default material if none were loaded
   if (model->GetMaterialCount() == 0) {
     auto default_material = std::make_unique<Material>("Default");
     default_material->SetBaseColorFactor(glm::vec4(0.8F, 0.8F, 0.8F, 1.0F));
     model->AddMaterial(std::move(default_material));
   }
 
-  // Process each shape into a mesh
+  // Process shapes into meshes
   for (const auto& shape : shapes) {
-    auto mesh = std::make_unique<Mesh>(shape.name);
-
-    std::vector<Vertex> vertices;
-    std::unordered_map<Vertex, uint32_t, VertexHash> unique_vertices;
-
-    // Group indices by material to ensure contiguous ranges
-    std::map<int, std::vector<uint32_t>> indices_by_material;
-
-    size_t index_offset = 0;
-    for (size_t face_idx = 0; face_idx < shape.mesh.num_face_vertices.size();
-         ++face_idx)
-    {
-      size_t num_verts = shape.mesh.num_face_vertices[face_idx];
-      int material_id = shape.mesh.material_ids.empty()
-          ? 0
-          : shape.mesh.material_ids[face_idx];
-      material_id = std::max(material_id, 0);
-
-      for (size_t vert = 0; vert < num_verts; ++vert) {
-        const auto& idx = shape.mesh.indices[index_offset + vert];
-
-        Vertex vertex {};
-
-        // Position
-        vertex.Position = {
-            attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 0]
-                * options.Scale,
-            attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 1]
-                * options.Scale,
-            attrib.vertices[(3 * static_cast<size_t>(idx.vertex_index)) + 2]
-                * options.Scale,
-        };
-
-        // Normal
-        if (idx.normal_index >= 0 && !attrib.normals.empty()) {
-          vertex.Normal = {
-              attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 0],
-              attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 1],
-              attrib.normals[(3 * static_cast<size_t>(idx.normal_index)) + 2],
-          };
-        }
-
-        // TexCoord
-        if (idx.texcoord_index >= 0 && !attrib.texcoords.empty()) {
-          vertex.TexCoord = {
-              attrib
-                  .texcoords[(2 * static_cast<size_t>(idx.texcoord_index)) + 0],
-              options.FlipUVs
-                  ? (1.0F
-                     - attrib.texcoords
-                           [(2 * static_cast<size_t>(idx.texcoord_index)) + 1])
-                  : attrib
-                        .texcoords[(2 * static_cast<size_t>(idx.texcoord_index))
-                                   + 1],
-          };
-        }
-
-        // Deduplicate vertices
-        if (!unique_vertices.contains(vertex)) {
-          unique_vertices[vertex] = static_cast<uint32_t>(vertices.size());
-          vertices.push_back(vertex);
-        }
-
-        indices_by_material[material_id].push_back(unique_vertices[vertex]);
-      }
-
-      index_offset += num_verts;
-    }
-
-    // Combine indices in material order and track submesh ranges
-    std::vector<uint32_t> indices;
-    std::vector<std::tuple<uint32_t, uint32_t, int>> submesh_ranges;
-
-    for (const auto& [mat_id, mat_indices] : indices_by_material) {
-      auto start_offset = static_cast<uint32_t>(indices.size());
-      auto count = static_cast<uint32_t>(mat_indices.size());
-      indices.insert(indices.end(), mat_indices.begin(), mat_indices.end());
-      submesh_ranges.emplace_back(start_offset, count, mat_id);
-    }
-
-    mesh->SetVertices(std::move(vertices));
-    mesh->SetIndices(std::move(indices));
-
-    if (options.CalculateTangents) {
-      mesh->ComputeTangents();
-    }
-
-    for (const auto& [start_offset, count, mat_id] : submesh_ranges) {
-      auto mat_index = static_cast<uint32_t>(mat_id);
-      if (mat_index >= model->GetMaterialCount()) {
-        mat_index = 0;  // Fall back to default material
-      }
-      mesh->AddSubMesh(start_offset, count, mat_index);
-    }
-
-    // If no submeshes were added, create one covering all
-    if (mesh->GetSubMeshCount() == 0) {
-      mesh->CreateSingleSubMesh(0);
-    }
-
-    model->AddMesh(std::move(mesh));
+    model->AddMesh(
+        ProcessShape(shape, attrib, options, model->GetMaterialCount()));
   }
 
   return model;
@@ -248,7 +275,6 @@ auto ModelLoaderRegistry::Instance() -> ModelLoaderRegistry&
 
 ModelLoaderRegistry::ModelLoaderRegistry()
 {
-  // Register default loaders
   RegisterLoader(std::make_unique<OBJModelLoader>());
 }
 

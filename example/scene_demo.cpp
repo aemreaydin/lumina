@@ -28,51 +28,48 @@ protected:
   {
     Logger::Info("SceneDemoApp::OnInit - Setting up scene");
 
-    // Create asset manager
     m_AssetManager = std::make_unique<AssetManager>(GetDevice());
 
-    // Create scene renderer
     m_SceneRenderer =
         std::make_unique<SceneRenderer>(GetDevice(), *m_AssetManager);
 
-    // Create scene
     m_Scene = std::make_unique<Scene>("Demo Scene");
 
-    // Load model
     auto model = m_AssetManager->LoadModel("volleyball/volleyball.obj");
     if (!model) {
       Logger::Error("Failed to load model!");
       return;
     }
 
-    // Create nodes with the model at different positions
     auto* node1 = m_Scene->CreateNode("Volleyball1");
     node1->SetModel(model);
     node1->SetPosition(glm::vec3(0.0F, 0.0F, 0.0F));
+    node1->SetScale(0.1F);
 
     auto* node2 = m_Scene->CreateNode("Volleyball2");
-    node2->SetModel(model);  // Same model, shared
+    node2->SetModel(model);
     node2->SetPosition(glm::vec3(5.0F, 0.0F, 0.0F));
+    node2->SetScale(0.1F);
 
     auto* node3 = m_Scene->CreateNode("Volleyball3");
     node3->SetModel(model);
     node3->SetPosition(glm::vec3(-5.0F, 0.0F, 0.0F));
+    node3->SetScale(0.1F);
 
-    // Create a child node to demonstrate hierarchy
     auto* child = node1->CreateChild("ChildBall");
     child->SetModel(model);
-    child->SetPosition(glm::vec3(0.0F, 3.0F, 0.0F));  // Offset from parent
-    child->SetScale(0.5F);  // Half size
+    child->SetPosition(glm::vec3(0.0F, 30.0F, 0.0F));
+    child->SetScale(1.0F);
 
-    // Update all transforms
-    m_Scene->UpdateTransforms();
+    auto* child1 = node1->CreateChild("ChildBall");
+    child1->SetModel(model);
+    child1->SetPosition(glm::vec3(0.0F, -30.0F, 0.0F));
+    child1->SetScale(1.0F);
 
-    // Setup camera
-    m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 100.0F);
+    m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
     m_Camera.SetPosition(glm::vec3(15.0F, 10.0F, 15.0F));
     m_Camera.SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
 
-    // Create camera controllers
     m_OrbitController = std::make_unique<OrbitCameraController>(&m_Camera);
     m_OrbitController->SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
     m_OrbitController->SetDistance(20.0F);
@@ -90,13 +87,11 @@ protected:
 
   void OnUpdate(float delta_time) override
   {
-    // ESC to exit
     if (Input::IsKeyPressed(KeyCode::Escape)) {
       GetWindow().RequestClose();
       return;
     }
 
-    // Camera switching
     if (Input::IsKeyPressed(KeyCode::Num1)) {
       m_ActiveController = m_OrbitController.get();
       Input::SetMouseCaptured(/*captured=*/false);
@@ -108,7 +103,6 @@ protected:
       Logger::Info("Switched to FPS camera");
     }
 
-    // Rotate first node when R is held
     if (Input::IsKeyDown(KeyCode::R)) {
       auto* node = m_Scene->FindNode("Volleyball1");
       if (node != nullptr) {
@@ -117,7 +111,6 @@ protected:
       }
     }
 
-    // Toggle child visibility with Space
     if (Input::IsKeyPressed(KeyCode::Space)) {
       auto* child = m_Scene->FindNode("ChildBall");
       if (child != nullptr) {
@@ -128,13 +121,11 @@ protected:
 
     m_ActiveController->Update(delta_time);
 
-    // Update aspect ratio
     auto* swapchain = GetDevice().GetSwapchain();
     const float aspect = static_cast<float>(swapchain->GetWidth())
         / static_cast<float>(swapchain->GetHeight());
     m_Camera.SetAspectRatio(aspect);
 
-    // Update scene transforms
     m_Scene->UpdateTransforms();
   }
 
@@ -143,10 +134,7 @@ protected:
     auto& device = GetDevice();
     auto* cmd = device.GetCurrentCommandBuffer();
 
-    // Begin frame with current camera
     m_SceneRenderer->BeginFrame(m_Camera);
-
-    // Render the scene
     m_SceneRenderer->RenderScene(*cmd, *m_Scene);
   }
 

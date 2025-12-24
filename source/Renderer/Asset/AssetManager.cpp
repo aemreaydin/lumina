@@ -269,7 +269,8 @@ void AssetManager::create_default_resources()
     desc.MipFilter = Filter::Linear;
     desc.AddressModeU = SamplerAddressMode::Repeat;
     desc.AddressModeV = SamplerAddressMode::Repeat;
-    desc.EnableAnisotropy = true;
+    // TODO: Anisotropy
+    desc.EnableAnisotropy = false;
     desc.MaxAnisotropy = 16.0F;
 
     m_DefaultSampler = m_Device.CreateSampler(desc);

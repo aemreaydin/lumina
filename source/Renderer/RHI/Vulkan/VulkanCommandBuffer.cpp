@@ -484,3 +484,17 @@ void VulkanCommandBuffer::DrawIndexed(uint32_t index_count,
                    vertex_offset,
                    first_instance);
 }
+
+void VulkanCommandBuffer::PushConstants(const RHIPipelineLayout& layout,
+                                        const PushConstant& push_constant,
+                                        const void* data)
+{
+  const auto& vk_layout = dynamic_cast<const VulkanPipelineLayout&>(layout);
+
+  vkCmdPushConstants(m_CommandBuffer,
+                     vk_layout.GetVkPipelineLayout(),
+                     VkUtils::ToVkShaderStageFlags(push_constant.Stages),
+                     push_constant.Offset,
+                     push_constant.Size,
+                     data);
+}

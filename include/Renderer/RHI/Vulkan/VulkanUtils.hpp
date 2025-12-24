@@ -14,6 +14,21 @@
 namespace VkUtils
 {
 
+constexpr auto ToVkShaderStageFlags(ShaderStage stages) -> VkShaderStageFlags
+{
+  VkShaderStageFlags flags = 0;
+  if ((stages & ShaderStage::Vertex) == ShaderStage::Vertex) {
+    flags |= VK_SHADER_STAGE_VERTEX_BIT;
+  }
+  if ((stages & ShaderStage::Fragment) == ShaderStage::Fragment) {
+    flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+  }
+  if ((stages & ShaderStage::Compute) == ShaderStage::Compute) {
+    flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+  }
+  return flags;
+}
+
 constexpr auto ToVkShaderStage(ShaderStage stage) -> VkShaderStageFlagBits
 {
   switch (stage) {
@@ -25,11 +40,6 @@ constexpr auto ToVkShaderStage(ShaderStage stage) -> VkShaderStageFlagBits
       return VK_SHADER_STAGE_COMPUTE_BIT;
   }
   return VK_SHADER_STAGE_VERTEX_BIT;
-}
-
-constexpr auto ToVkShaderStageFlags(ShaderStage stage) -> VkShaderStageFlags
-{
-  return static_cast<VkShaderStageFlags>(ToVkShaderStage(stage));
 }
 
 constexpr auto GetNextShaderStage(ShaderStage stage) -> VkShaderStageFlags

@@ -19,7 +19,7 @@ void Transform::SetRotation(const glm::quat& rotation)
 
 void Transform::SetRotationEuler(const glm::vec3& euler_degrees)
 {
-  glm::vec3 radians = glm::radians(euler_degrees);
+  const glm::vec3 radians = glm::radians(euler_degrees);
   m_Rotation = glm::quat(radians);
   MarkDirty();
 }
@@ -70,7 +70,7 @@ void Transform::Rotate(const glm::quat& delta)
 
 void Transform::RotateEuler(const glm::vec3& euler_degrees)
 {
-  glm::vec3 radians = glm::radians(euler_degrees);
+  const glm::vec3 radians = glm::radians(euler_degrees);
   Rotate(glm::quat(radians));
 }
 
@@ -182,11 +182,11 @@ auto Transform::IsWorldDirty() const -> bool
 
 void Transform::LookAt(const glm::vec3& target, const glm::vec3& v_up)
 {
-  glm::vec3 direction = glm::normalize(target - m_Position);
+  const glm::vec3 direction = glm::normalize(target - m_Position);
 
   // Calculate rotation to face the target
-  glm::vec3 right = glm::normalize(glm::cross(v_up, direction));
-  glm::vec3 actual_up = glm::cross(direction, right);
+  const glm::vec3 right = glm::normalize(glm::cross(v_up, direction));
+  const glm::vec3 actual_up = glm::cross(direction, right);
 
   glm::mat3 rotation_matrix;
   rotation_matrix[0] = right;

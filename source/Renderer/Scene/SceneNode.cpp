@@ -217,7 +217,7 @@ auto SceneNode::GetLocalBounds() const -> AABB
 
 auto SceneNode::GetWorldBounds() const -> AABB
 {
-  AABB local_bounds = GetLocalBounds();
+  const AABB local_bounds = GetLocalBounds();
   return local_bounds.Transform(m_Transform.GetWorldMatrix());
 }
 

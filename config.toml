@@ -2,11 +2,11 @@
 
 [logger]
 # Level: "trace" or "debug" or "info" or "warn" or "err" or "critical"
-level = "trace"
+level = "info"
 
 [renderer]
 # Graphics API: "OpenGL" or "Vulkan"
-api = "OpenGL"
+api = "Vulkan"
 
 # Enable validation layers (useful for debugging)
 # OpenGL: Enables debug output

@@ -44,6 +44,9 @@ public:
                    uint32_t first_index,
                    int32_t vertex_offset,
                    uint32_t first_instance) override;
+  void PushConstants(const RHIPipelineLayout& layout,
+                     const PushConstant& push_constant,
+                     const void* data) override;
 
 private:
   bool m_Recording {false};

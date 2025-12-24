@@ -3,30 +3,56 @@
 
 #include <cstdint>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <vector>
 
 class RHIDescriptorSetLayout;
 
-enum class ShaderStage : uint8_t
+enum class [[clang::flag_enum]] ShaderStage : uint8_t
 {
-  Vertex,
-  Fragment,
-  Compute
+  Vertex = 1 << 0,
+  Fragment = 1 << 1,
+  Compute = 1 << 2,
 };
 
-constexpr auto ToString(ShaderStage stage) -> const char*
+constexpr auto operator|(ShaderStage lhs, ShaderStage rhs) -> ShaderStage
 {
-  switch (stage) {
-    case ShaderStage::Vertex:
-      return "vertex";
-    case ShaderStage::Fragment:
-      return "fragment";
-    case ShaderStage::Compute:
-      return "compute";
-  }
-  return "unknown";
+  return static_cast<ShaderStage>(static_cast<uint8_t>(lhs)
+                                  | static_cast<uint8_t>(rhs));
 }
+
+constexpr auto operator&(ShaderStage lhs, ShaderStage rhs) -> ShaderStage
+{
+  return static_cast<ShaderStage>(static_cast<uint8_t>(lhs)
+                                  & static_cast<uint8_t>(rhs));
+}
+
+constexpr auto ToString(ShaderStage stage) -> std::string
+{
+  std::vector<std::string> res_vec;
+  if ((stage & ShaderStage::Vertex) == ShaderStage::Vertex) {
+    res_vec.emplace_back("vertex");
+  }
+  if ((stage & ShaderStage::Fragment) == ShaderStage::Fragment) {
+    res_vec.emplace_back("vertex");
+  }
+  if ((stage & ShaderStage::Compute) == ShaderStage::Compute) {
+    res_vec.emplace_back("vertex");
+  }
+  if (res_vec.empty()) {
+    return "unknown";
+  }
+  return std::ranges::views::join_with(res_vec, ',')
+      | std::ranges::to<std::string>();
+}
+
+struct PushConstant
+{
+  ShaderStage Stages {ShaderStage::Vertex};
+  uint32_t Size {0};
+  uint32_t Offset {0};
+};
 
 struct ShaderModuleDesc
 {
@@ -34,6 +60,7 @@ struct ShaderModuleDesc
   std::vector<uint32_t> SPIRVCode;
   std::string EntryPoint {"main"};
   std::vector<std::shared_ptr<RHIDescriptorSetLayout>> SetLayouts;
+  std::vector<PushConstant> PushConstants;
 };
 
 class RHIShaderModule

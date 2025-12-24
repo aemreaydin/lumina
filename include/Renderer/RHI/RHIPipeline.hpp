@@ -12,6 +12,7 @@ class RHIDescriptorSetLayout;
 struct PipelineLayoutDesc
 {
   std::vector<std::shared_ptr<RHIDescriptorSetLayout>> SetLayouts;
+  std::vector<PushConstant> PushConstants;
 };
 
 class RHIPipelineLayout

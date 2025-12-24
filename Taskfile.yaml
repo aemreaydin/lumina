@@ -51,11 +51,11 @@ tasks:
       - cp config.toml build/dev/example/
 
   run:
-    desc: Run an example application (default = depth)
+    desc: Run an example application (default = scene_demo)
     deps: [build, assets]
     dir: build/dev/example
     vars:
-      EXAMPLE: '{{.EXAMPLE | default "depth"}}'
+      EXAMPLE: '{{.EXAMPLE | default "scene_demo"}}'
     cmds:
       - ./{{.EXAMPLE}}{{exeExt}}
 
