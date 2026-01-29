@@ -44,6 +44,9 @@ add_library(
         source/Renderer/Scene/SceneRenderer.cpp
         # UI
         source/UI/ImGuiStyle.cpp
+        source/UI/RHIImGui.cpp
+        source/UI/SettingsPanel.cpp
+        source/UI/SceneHierarchyPanel.cpp
         # RHI
         source/Renderer/RHI/RHIDevice.cpp
         source/Renderer/RHI/OpenGL/OpenGLDevice.cpp
