@@ -10,7 +10,14 @@
     {
       "name": "sdl3",
       "version>=": "3.2.28",
-      "features": ["vulkan", "wayland", "x11"]
+      "features": ["vulkan"],
+      "platform": "windows"
+    },
+    {
+      "name": "sdl3",
+      "version>=": "3.2.28",
+      "features": ["vulkan", "wayland", "x11"],
+      "platform": "linux"
     },
     {
       "name": "spdlog",
@@ -43,6 +50,11 @@
     {
       "name": "tinyobjloader",
       "version>=": "2.0.0rc13#0"
+    },
+    {
+      "name": "imgui",
+      "version>=": "1.91.0",
+      "features": ["sdl3-binding", "vulkan-binding", "opengl3-binding", "docking-experimental"]
     }
   ],
   "default-features": [],
