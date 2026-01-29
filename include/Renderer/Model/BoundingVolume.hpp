@@ -1,6 +1,7 @@
 #ifndef RENDERER_MODEL_BOUNDINGVOLUME_HPP
 #define RENDERER_MODEL_BOUNDINGVOLUME_HPP
 
+#include <array>
 #include <limits>
 #include <span>
 

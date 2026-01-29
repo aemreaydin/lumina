@@ -1,23 +1,28 @@
 {
-  "version": 2,
+  "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 14,
+    "minor": 21,
     "patch": 0
   },
   "configurePresets": [
     {
       "name": "dev-common",
       "hidden": true,
-      "inherits": ["dev-mode", "vcpkg", "clang-tidy", "cppcheck"],
+      "inherits": ["dev-mode", "vcpkg"],
       "cacheVariables": {
         "BUILD_MCSS_DOCS": "ON"
       }
     },
     {
       "name": "dev-linux",
-      "binaryDir": "${sourceDir}/build/dev-linux",
-      "inherits": ["dev-common", "ci-linux"],
+      "binaryDir": "${sourceDir}/build/dev",
+      "inherits": ["dev-common", "ci-linux", "clang-tidy", "cppcheck"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -25,33 +30,48 @@
     },
     {
       "name": "dev-darwin",
-      "binaryDir": "${sourceDir}/build/dev-darwin",
-      "inherits": ["dev-common", "ci-darwin"]
+      "binaryDir": "${sourceDir}/build/dev",
+      "inherits": ["dev-common", "ci-darwin", "clang-tidy", "cppcheck"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     },
     {
       "name": "dev-win64",
-      "binaryDir": "${sourceDir}/build/dev-win64",
-      "inherits": ["dev-common", "ci-win64", "vcpkg-win64-static"],
+      "binaryDir": "${sourceDir}/build/dev",
+      "inherits": ["dev-common", "ci-win64", "vcpkg-win64-static", "clang-tidy", "cppcheck"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
       "environment": {
         "UseMultiToolTask": "true",
         "EnforceProcessCountAcrossBuilds": "true"
       }
     },
     {
-      "name": "dev",
-      "binaryDir": "${sourceDir}/build/dev",
-      "inherits": "dev-linux"
-    },
-    {
       "name": "dev-coverage",
       "binaryDir": "${sourceDir}/build/coverage",
-      "inherits": ["dev-mode", "coverage-linux", "vcpkg"]
+      "inherits": ["dev-mode", "coverage-linux", "vcpkg"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     },
     {
-      "name": "simple",
+      "name": "simple-linux",
       "binaryDir": "${sourceDir}/build/simple",
       "inherits": ["vcpkg"],
       "generator": "Unix Makefiles",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -61,12 +81,52 @@
       }
     },
     {
-      "name": "simple-release",
+      "name": "simple-win64",
+      "binaryDir": "${sourceDir}/build/simple",
+      "inherits": ["vcpkg", "vcpkg-win64-static"],
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "simple-release-linux",
       "binaryDir": "${sourceDir}/build/simple-release",
       "inherits": ["vcpkg"],
       "generator": "Unix Makefiles",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "simple-release-win64",
+      "binaryDir": "${sourceDir}/build/simple-release",
+      "inherits": ["vcpkg", "vcpkg-win64-static"],
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
@@ -76,26 +136,81 @@
   ],
   "buildPresets": [
     {
-      "name": "dev",
-      "configurePreset": "dev",
+      "name": "dev-linux",
+      "configurePreset": "dev-linux",
       "configuration": "Debug",
-      "jobs": 24
+      "jobs": 24,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     },
     {
-      "name": "simple",
-      "configurePreset": "simple",
-      "configuration": "Debug"
+      "name": "dev-win64",
+      "configurePreset": "dev-win64",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
-      "name": "simple-release",
-      "configurePreset": "simple-release",
-      "configuration": "Release"
+      "name": "dev-darwin",
+      "configurePreset": "dev-darwin",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "simple-linux",
+      "configurePreset": "simple-linux",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "simple-win64",
+      "configurePreset": "simple-win64",
+      "configuration": "Debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "simple-release-linux",
+      "configurePreset": "simple-release-linux",
+      "configuration": "Release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "simple-release-win64",
+      "configurePreset": "simple-release-win64",
+      "configuration": "Release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "testPresets": [
     {
-      "name": "dev",
-      "configurePreset": "dev",
+      "name": "dev-linux",
+      "configurePreset": "dev-linux",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
@@ -103,6 +218,27 @@
       "execution": {
         "jobs": 24,
         "noTestsAction": "error"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "dev-win64",
+      "configurePreset": "dev-win64",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
       }
     }
   ]

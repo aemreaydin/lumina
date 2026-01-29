@@ -9,7 +9,11 @@
 
 class RHIDescriptorSetLayout;
 
+#ifdef _WIN32
+enum class ShaderStage : uint8_t
+#elifdef __linux__
 enum class [[clang::flag_enum]] ShaderStage : uint8_t
+#endif
 {
   Vertex = 1 << 0,
   Fragment = 1 << 1,

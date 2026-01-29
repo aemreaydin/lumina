@@ -41,8 +41,8 @@ struct VertexHash
 static auto NormalizeTexturePath(const std::filesystem::path& model_path,
                                  const std::string& tex_name) -> std::string
 {
-  std::string tex_path =
-      std::filesystem::absolute(model_path.parent_path() / tex_name);
+  auto tex_path =
+      std::filesystem::absolute(model_path.parent_path() / tex_name).string();
   std::ranges::replace(tex_path, '\\', '/');
   return tex_path;
 }

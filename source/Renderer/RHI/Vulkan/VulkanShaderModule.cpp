@@ -37,7 +37,7 @@ VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
        std::ranges::views::enumerate(desc.PushConstants))
   {
     vk_push_constants.at(static_cast<size_t>(index)) = {
-        .stageFlags = VkUtils::ToVkShaderStage(push_constant.Stages),
+        .stageFlags = VkUtils::ToVkShaderStageFlags(push_constant.Stages),
         .offset = push_constant.Offset,
         .size = push_constant.Size};
   }

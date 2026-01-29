@@ -1,7 +1,6 @@
 #ifndef PLATFORM_LINUXWINDOW_HPP
 #define PLATFORM_LINUXWINDOW_HPP
 
-#include <cstdint>
 #include <functional>
 
 #include <SDL3/SDL.h>

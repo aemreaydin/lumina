@@ -29,7 +29,7 @@ constexpr auto ToVkShaderStageFlags(ShaderStage stages) -> VkShaderStageFlags
   return flags;
 }
 
-constexpr auto ToVkShaderStage(ShaderStage stage) -> VkShaderStageFlagBits
+constexpr auto ToVkShaderStage(const ShaderStage stage) -> VkShaderStageFlagBits
 {
   switch (stage) {
     case ShaderStage::Vertex:

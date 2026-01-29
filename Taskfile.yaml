@@ -3,6 +3,9 @@ version: "3"
 vars:
   BUILD_TYPE: '{{.BUILD_TYPE | default "Debug"}}'
   BUILD_JOBS: '{{.BUILD_JOBS | default "4"}}'
+  PRESET:
+    sh: |
+      {{if eq OS "windows"}}echo simple-win64{{else if eq OS "darwin"}}echo simple-darwin{{else}}echo simple-linux{{end}}
 
 tasks:
   configure:
@@ -12,9 +15,9 @@ tasks:
       - source/**/*.cpp
       - source/**/*.hpp
     generates:
-      - build/dev/CMakeCache.txt
+      - build/simple/CMakeCache.txt
     cmds:
-      - cmake --preset=dev
+      - cmake --preset={{.PRESET}}
 
   build:
     desc: Build the engine
@@ -25,11 +28,11 @@ tasks:
       - example/**/*.cpp
       - example/**/*.hpp
     generates:
-      - build/dev/example/triangle{{exeExt}}
-      - build/dev/example/texture{{exeExt}}
-      - build/dev/example/depth{{exeExt}}
+      - build/simple/example/triangle{{exeExt}}
+      - build/simple/example/texture{{exeExt}}
+      - build/simple/example/depth{{exeExt}}
     cmds:
-      - cmake --build --preset=dev
+      - cmake --build --preset={{.PRESET}}
 
   rebuild:
     desc: Clean and rebuild from scratch
@@ -44,47 +47,76 @@ tasks:
       - example/shaders/**/*
       - config.toml
     cmds:
-      - mkdir -p build/dev/example/shaders
-      - mkdir -p build/dev/example/assets
-      - cp -r example/shaders/* build/dev/example/shaders/
-      - cp -r example/assets/* build/dev/example/assets/
-      - cp config.toml build/dev/example/
+      - cmd: powershell -Command "New-Item -ItemType Directory -Force -Path build/simple/example/shaders | Out-Null; New-Item -ItemType Directory -Force -Path build/simple/example/assets | Out-Null"
+        platforms: [windows]
+      - cmd: powershell -Command "Copy-Item -Recurse -Force example/shaders/* build/simple/example/shaders/"
+        platforms: [windows]
+      - cmd: powershell -Command "Copy-Item -Recurse -Force example/assets/* build/simple/example/assets/"
+        platforms: [windows]
+      - cmd: powershell -Command "Copy-Item -Force config.toml build/simple/example/"
+        platforms: [windows]
+      - cmd: mkdir -p build/simple/example/shaders build/simple/example/assets
+        platforms: [linux, darwin]
+      - cmd: cp -r example/shaders/* build/simple/example/shaders/
+        platforms: [linux, darwin]
+      - cmd: cp -r example/assets/* build/simple/example/assets/
+        platforms: [linux, darwin]
+      - cmd: cp config.toml build/simple/example/
+        platforms: [linux, darwin]
 
   run:
     desc: Run an example application (default = scene_demo)
     deps: [build, assets]
-    dir: build/dev/example
+    dir: build/simple/example
     vars:
       EXAMPLE: '{{.EXAMPLE | default "scene_demo"}}'
     cmds:
-      - ./{{.EXAMPLE}}{{exeExt}}
+      - cmd: ./{{.EXAMPLE}}{{exeExt}}
+        platforms: [linux, darwin]
+      - cmd: '{{.EXAMPLE}}{{exeExt}}'
+        platforms: [windows]
 
   clean:
     desc: Clean build artifacts
     cmds:
-      - rm -rf build
+      - cmd: rm -rf build
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "if (Test-Path build) { Remove-Item -Recurse -Force build }"
+        platforms: [windows]
 
   format:
     desc: Run clang-format on all source files
     cmds:
-      - find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format -i --verbose
+      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format -i --verbose
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,example | ForEach-Object { clang-format -i --verbose $_.FullName }"
+        platforms: [windows]
 
   format-check:
     desc: Check if code is formatted correctly (non-destructive)
     cmds:
-      - find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run -Werror --verbose
+      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run -Werror --verbose
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,example | ForEach-Object { clang-format --dry-run -Werror --verbose $_.FullName }"
+        platforms: [windows]
 
   tidy:
     desc: Run clang-tidy static analysis. Treats warnings as errors.
     deps: [configure]
     cmds:
-      - find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/dev
+      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,example | ForEach-Object { clang-tidy -p build/simple $_.FullName }"
+        platforms: [windows]
 
   tidy-fix:
-    desc: Run clang-tidy static analysis. Treats warnings as errors.
+    desc: Run clang-tidy static analysis with auto-fix.
     deps: [configure]
     cmds:
-      - find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/dev -fix
+      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple -fix
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,example | ForEach-Object { clang-tidy -p build/simple -fix $_.FullName }"
+        platforms: [windows]
 
   test:
     desc: Run tests (placeholder for future test infrastructure)

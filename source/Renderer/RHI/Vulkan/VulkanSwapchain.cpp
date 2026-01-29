@@ -179,7 +179,8 @@ void VulkanSwapchain::create_swapchain()
 
   if (m_Device.GetGraphicsQueueFamily() != m_Device.GetPresentQueueFamily()) {
     create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-    create_info.queueFamilyIndexCount = queue_family_indices.size();
+    create_info.queueFamilyIndexCount =
+        static_cast<uint32_t>(queue_family_indices.size());
     create_info.pQueueFamilyIndices = queue_family_indices.data();
   } else {
     create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
