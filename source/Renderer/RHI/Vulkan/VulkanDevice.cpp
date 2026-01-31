@@ -490,16 +490,26 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
   shader_object_features.shaderObject = VK_TRUE;
 
+  // Enable dynamic rendering unused attachments to suppress false-positive
+  // validation errors when using shader objects with depth attachments
+  VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT
+      unused_attachments_features = {};
+  unused_attachments_features.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT;
+  unused_attachments_features.pNext = &shader_object_features;
+  unused_attachments_features.dynamicRenderingUnusedAttachments = VK_TRUE;
+
   VkPhysicalDeviceVulkan13Features vulkan13_features = {};
   vulkan13_features.sType =
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-  vulkan13_features.pNext = &shader_object_features;
+  vulkan13_features.pNext = &unused_attachments_features;
   vulkan13_features.dynamicRendering = VK_TRUE;
   vulkan13_features.synchronization2 = VK_TRUE;
 
   const std::vector<const char*> device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_SHADER_OBJECT_EXTENSION_NAME,
+      VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME,
   };
 
   VkDeviceCreateInfo create_info = {};

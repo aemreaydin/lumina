@@ -63,6 +63,7 @@ public:
   virtual void RequestClose() = 0;
 
   [[nodiscard]] virtual auto GetNativeWindow() const -> void* = 0;
+  [[nodiscard]] virtual auto GetDisplayScale() const -> float = 0;
 
   static auto Create(const WindowProps& props = WindowProps())
       -> std::unique_ptr<Window>;

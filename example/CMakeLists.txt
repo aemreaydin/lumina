@@ -49,6 +49,14 @@ foreach(EXAMPLE_TARGET triangle texture depth scene_demo)
             "$<TARGET_FILE_DIR:${EXAMPLE_TARGET}>/assets"
         COMMENT "Copying assets to ${EXAMPLE_TARGET} directory"
     )
+
+    add_custom_command(
+        TARGET ${EXAMPLE_TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/third_party/fonts"
+            "$<TARGET_FILE_DIR:${EXAMPLE_TARGET}>/fonts"
+        COMMENT "Copying fonts to ${EXAMPLE_TARGET} directory"
+    )
 endforeach()
 
 add_folders(Example)

@@ -40,8 +40,11 @@ public:
   [[nodiscard]] auto GetUp() const -> const glm::vec3&;
   [[nodiscard]] auto GetPitch() const -> float;
   [[nodiscard]] auto GetYaw() const -> float;
+
   [[nodiscard]] auto GetFOV() const -> float { return m_FOV; }
+
   [[nodiscard]] auto GetNearPlane() const -> float { return m_NearPlane; }
+
   [[nodiscard]] auto GetFarPlane() const -> float { return m_FarPlane; }
 
   [[nodiscard]] auto GetViewMatrix() const -> const glm::mat4&;

@@ -67,6 +67,8 @@ add_library(
         source/Renderer/RHI/OpenGL/OpenGLPipelineLayout.cpp
         source/Renderer/RHI/OpenGL/OpenGLTexture.cpp
         source/Renderer/RHI/OpenGL/OpenGLSampler.cpp
+        source/Renderer/RHI/OpenGL/OpenGLImGui.cpp
+        source/Renderer/RHI/Vulkan/VulkanImGui.cpp
 )
 add_library(lumina::lumina ALIAS lumina_lumina)
 
@@ -138,8 +140,24 @@ target_link_libraries(lumina_lumina PUBLIC tinyobjloader::tinyobjloader)
 find_package(slang CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC slang::slang)
 
-find_package(imgui CONFIG REQUIRED)
-target_link_libraries(lumina_lumina PUBLIC imgui::imgui)
+# ---- ImGui (local build) ----
+add_library(imgui STATIC
+        third_party/imgui/imgui.cpp
+        third_party/imgui/imgui_demo.cpp
+        third_party/imgui/imgui_draw.cpp
+        third_party/imgui/imgui_tables.cpp
+        third_party/imgui/imgui_widgets.cpp
+        third_party/imgui/imgui_impl_sdl3.cpp
+        third_party/imgui/imgui_impl_vulkan.cpp
+        third_party/imgui/imgui_impl_opengl3.cpp
+)
+target_include_directories(imgui PUBLIC
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party/imgui>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
+target_link_libraries(imgui PUBLIC SDL3::SDL3 volk::volk volk::volk_headers)
+target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK)
+target_link_libraries(lumina_lumina PUBLIC imgui)
 
 target_compile_definitions(
         lumina_lumina

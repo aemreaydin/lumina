@@ -3,11 +3,18 @@
 #include "Core/Application.hpp"
 
 #include <SDL3/SDL.h>
+#include <imgui.h>
+#include <imgui_impl_sdl3.h>
 
 #include "Core/ConfigLoader.hpp"
 #include "Core/Input.hpp"
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
+#include "UI/RHIImGui.hpp"
+
+Application::Application() = default;
+
+Application::~Application() = default;
 
 void Application::Init()
 {
@@ -29,6 +36,10 @@ void Application::Init()
   m_RHIDevice->Init(m_RendererConfig, m_Window->GetNativeWindow());
   m_RHIDevice->CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 
+  // Initialize ImGui
+  m_ImGui = RHIImGui::Create(*m_RHIDevice);
+  m_ImGui->Init(*m_Window);
+
   // Initialize timing
   m_StartTime = SDL_GetPerformanceCounter();
   m_LastFrameTime = m_StartTime;
@@ -47,6 +58,11 @@ void Application::Destroy()
   }
 
   OnDestroy();
+
+  if (m_ImGui) {
+    m_ImGui->Shutdown();
+    m_ImGui.reset();
+  }
 
   if (m_RHIDevice) {
     m_RHIDevice->Destroy();
@@ -73,6 +89,35 @@ void Application::InitSdl()
 
 void Application::OnEvent(void* event)
 {
+  auto* sdl_event = static_cast<const SDL_Event*>(event);
+  ImGui_ImplSDL3_ProcessEvent(sdl_event);
+
+  const ImGuiIO& imgui_io = ImGui::GetIO();
+
+  // Skip mouse events when ImGui wants the mouse (hovering over a panel)
+  if (imgui_io.WantCaptureMouse) {
+    switch (sdl_event->type) {
+      case SDL_EVENT_MOUSE_MOTION:
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case SDL_EVENT_MOUSE_BUTTON_UP:
+      case SDL_EVENT_MOUSE_WHEEL:
+        return;
+      default:
+        break;
+    }
+  }
+
+  // Skip keyboard events when ImGui wants the keyboard (typing in a widget)
+  if (imgui_io.WantCaptureKeyboard) {
+    switch (sdl_event->type) {
+      case SDL_EVENT_KEY_DOWN:
+      case SDL_EVENT_KEY_UP:
+        return;
+      default:
+        break;
+    }
+  }
+
   Input::ProcessEvent(event);
 }
 
@@ -107,7 +152,13 @@ void Application::Run()
     // Begin rendering
     m_RHIDevice->BeginFrame();
 
+    // Begin ImGui frame
+    m_ImGui->BeginFrame();
+
     OnRender(delta_time);
+
+    // End ImGui frame (renders draw data)
+    m_ImGui->EndFrame();
 
     // End rendering
     m_RHIDevice->EndFrame();

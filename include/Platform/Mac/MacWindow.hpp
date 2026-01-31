@@ -53,6 +53,13 @@ public:
     return m_ShouldClose;
   }
 
+  void RequestClose() override { m_ShouldClose = true; }
+
+  [[nodiscard]] auto GetDisplayScale() const -> float override
+  {
+    return m_Window != nullptr ? SDL_GetWindowDisplayScale(m_Window) : 1.0F;
+  }
+
 private:
   SDL_Window* m_Window {nullptr};
   bool m_ShouldClose {false};

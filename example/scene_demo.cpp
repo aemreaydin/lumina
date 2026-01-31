@@ -17,6 +17,7 @@
 #include "Renderer/Scene/Scene.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
 #include "Renderer/Scene/SceneRenderer.hpp"
+#include "UI/RHIImGui.hpp"
 
 class SceneDemoApp : public Application
 {
@@ -56,12 +57,12 @@ protected:
     node3->SetPosition(glm::vec3(-5.0F, 0.0F, 0.0F));
     node3->SetScale(0.1F);
 
-    auto* child = node1->CreateChild("ChildBall");
+    auto* child = m_Scene->CreateNode("ChildBall", node1);
     child->SetModel(model);
     child->SetPosition(glm::vec3(0.0F, 30.0F, 0.0F));
     child->SetScale(1.0F);
 
-    auto* child1 = node1->CreateChild("ChildBall");
+    auto* child1 = m_Scene->CreateNode("ChildBall", node1);
     child1->SetModel(model);
     child1->SetPosition(glm::vec3(0.0F, -30.0F, 0.0F));
     child1->SetScale(1.0F);
@@ -80,9 +81,13 @@ protected:
 
     m_ActiveController = m_OrbitController.get();
 
+    // Setup ImGui with camera
+    GetImGui().SetCamera(m_Camera);
+
     Logger::Info("Scene created with {} nodes", m_Scene->GetNodeCount());
     Logger::Info("Controls: 1=Orbit camera, 2=FPS camera, ESC=Exit");
     Logger::Info("          R=Rotate node1, Space=Toggle child visibility");
+    Logger::Info("          F1=Settings, F2=Scene Hierarchy");
   }
 
   void OnUpdate(float delta_time) override
@@ -136,6 +141,9 @@ protected:
 
     m_SceneRenderer->BeginFrame(m_Camera);
     m_SceneRenderer->RenderScene(*cmd, *m_Scene);
+
+    // Render ImGui panels
+    GetImGui().RenderPanels(*m_Scene);
   }
 
   void OnDestroy() override

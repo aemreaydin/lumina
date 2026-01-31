@@ -7,16 +7,17 @@
 #include "Window.hpp"
 
 class RHIDevice;
+class RHIImGui;
 
 class Application
 {
 public:
-  Application() = default;
+  Application();
   Application(const Application&) = delete;
   Application(Application&&) = delete;
   auto operator=(const Application&) -> Application& = delete;
   auto operator=(Application&&) -> Application& = delete;
-  virtual ~Application() = default;
+  virtual ~Application();
 
   void Init();
   void Destroy();
@@ -42,12 +43,17 @@ protected:
 
   [[nodiscard]] auto GetWindow() -> Window& { return *m_Window; }
 
+  [[nodiscard]] auto GetImGui() -> RHIImGui& { return *m_ImGui; }
+
+  [[nodiscard]] auto GetImGui() const -> const RHIImGui& { return *m_ImGui; }
+
 private:
   static void InitSdl();
 
   RendererConfig m_RendererConfig;
   std::unique_ptr<Window> m_Window;
   std::unique_ptr<RHIDevice> m_RHIDevice;
+  std::unique_ptr<RHIImGui> m_ImGui;
   bool m_Running = true;
   uint64_t m_StartTime {0};
   uint64_t m_LastFrameTime {0};

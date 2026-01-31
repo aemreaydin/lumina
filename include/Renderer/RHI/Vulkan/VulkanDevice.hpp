@@ -90,6 +90,23 @@ public:
     return m_PresentQueueFamily;
   }
 
+  [[nodiscard]] static constexpr auto GetApiVersion() -> uint32_t
+  {
+    return VK_API_VERSION_1_3;
+  }
+
+  [[nodiscard]] auto GetSwapchainFormat() const -> VkFormat
+  {
+    return m_Swapchain ? m_Swapchain->GetFormat() : VK_FORMAT_B8G8R8A8_SRGB;
+  }
+
+  [[nodiscard]] auto GetDepthFormat() const -> VkFormat
+  {
+    return m_Swapchain ? m_Swapchain->GetDepthFormat() : VK_FORMAT_D32_SFLOAT;
+  }
+
+  [[nodiscard]] auto IsDepthEnabled() const -> bool { return m_DepthEnabled; }
+
 private:
   void pick_physical_device(VkSurfaceKHR surface);
   void create_logical_device(VkSurfaceKHR surface);

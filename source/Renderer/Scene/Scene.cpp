@@ -24,7 +24,7 @@ auto Scene::GetRoot() const -> const SceneNode&
 auto Scene::CreateNode(const std::string& name, SceneNode* parent) -> SceneNode*
 {
   SceneNode* target_parent = (parent != nullptr) ? parent : m_Root.get();
-  return target_parent->CreateChild(name);
+  return target_parent->CreateChild(MakeUniqueName(name));
 }
 
 auto Scene::FindNode(const std::string& name) const -> SceneNode*
@@ -131,6 +131,22 @@ void Scene::SetActiveCamera(Camera* camera)
 auto Scene::GetActiveCamera() const -> Camera*
 {
   return m_ActiveCamera;
+}
+
+auto Scene::MakeUniqueName(const std::string& name) const -> std::string
+{
+  if (FindNode(name) == nullptr) {
+    return name;
+  }
+
+  int suffix = 1;
+  std::string candidate;
+  do {
+    candidate = name + "_" + std::to_string(suffix);
+    ++suffix;
+  } while (FindNode(candidate) != nullptr);
+
+  return candidate;
 }
 
 auto Scene::count_nodes(const SceneNode& node) const -> size_t

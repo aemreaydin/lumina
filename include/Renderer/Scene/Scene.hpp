@@ -59,6 +59,10 @@ public:
   void SetActiveCamera(Camera* camera);
   [[nodiscard]] auto GetActiveCamera() const -> Camera*;
 
+  // Generate a unique node name (appends _1, _2, ... if name already exists)
+  [[nodiscard]] auto MakeUniqueName(const std::string& name) const
+      -> std::string;
+
 private:
   auto count_nodes(const SceneNode& node) const -> size_t;
 

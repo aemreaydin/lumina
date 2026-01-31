@@ -30,11 +30,8 @@ public:
                        const RenderPassInfo& info);
   void EndRenderPass(const VulkanSwapchain& swapchain);
 
-  void ClearColor(const VulkanSwapchain& swapchain,
-                  float r,
-                  float g,
-                  float b,
-                  float a);
+  void ClearColor(
+      const VulkanSwapchain& swapchain, float r, float g, float b, float a);
 
   // RHICommandBuffer interface (drawing commands)
   void BindShaders(const RHIShaderModule* vertex_shader,

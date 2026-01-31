@@ -6,6 +6,6 @@ namespace UIStyle
 
 void ApplyFlatTheme();
 
-} // namespace UIStyle
+}  // namespace UIStyle
 
 #endif

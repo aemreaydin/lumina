@@ -54,7 +54,10 @@ public:
     return m_DepthImageView;
   }
 
-  [[nodiscard]] auto GetDepthFormat() const -> VkFormat { return m_DepthFormat; }
+  [[nodiscard]] auto GetDepthFormat() const -> VkFormat
+  {
+    return m_DepthFormat;
+  }
 
 private:
   void create_swapchain();

@@ -10,7 +10,8 @@
 class VulkanDevice;
 
 // Uses VK_EXT_shader_object for direct shader binding
-// TODO: Add fallback to VkShaderModule + VkPipeline for devices without extension
+// TODO: Add fallback to VkShaderModule + VkPipeline for devices without
+// extension
 class VulkanShaderModule final : public RHIShaderModule
 {
 public:
@@ -22,8 +23,13 @@ public:
   auto operator=(VulkanShaderModule&&) -> VulkanShaderModule& = delete;
   ~VulkanShaderModule() override;
 
-  [[nodiscard]] auto GetStage() const -> ShaderStage override { return m_Stage; }
+  [[nodiscard]] auto GetStage() const -> ShaderStage override
+  {
+    return m_Stage;
+  }
+
   [[nodiscard]] auto GetVkShaderEXT() const -> VkShaderEXT { return m_Shader; }
+
   [[nodiscard]] auto GetEntryPoint() const -> const std::string&
   {
     return m_EntryPoint;

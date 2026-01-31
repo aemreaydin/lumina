@@ -87,35 +87,35 @@ tasks:
   format:
     desc: Run clang-format on all source files
     cmds:
-      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format -i --verbose
+      - cmd: find source include example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format -i --verbose
         platforms: [linux, darwin]
-      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,example | ForEach-Object { clang-format -i --verbose $_.FullName }"
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,include,example | ForEach-Object { clang-format -i --verbose $_.FullName }"
         platforms: [windows]
 
   format-check:
     desc: Check if code is formatted correctly (non-destructive)
     cmds:
-      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run -Werror --verbose
+      - cmd: find source include example \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run -Werror --verbose
         platforms: [linux, darwin]
-      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,example | ForEach-Object { clang-format --dry-run -Werror --verbose $_.FullName }"
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp,*.h -Path source,include,example | ForEach-Object { clang-format --dry-run -Werror --verbose $_.FullName }"
         platforms: [windows]
 
   tidy:
     desc: Run clang-tidy static analysis. Treats warnings as errors.
     deps: [configure]
     cmds:
-      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple
+      - cmd: find source include example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple
         platforms: [linux, darwin]
-      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,example | ForEach-Object { clang-tidy -p build/simple $_.FullName }"
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,include,example | ForEach-Object { clang-tidy -p build/simple $_.FullName }"
         platforms: [windows]
 
   tidy-fix:
     desc: Run clang-tidy static analysis with auto-fix.
     deps: [configure]
     cmds:
-      - cmd: find source example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple -fix
+      - cmd: find source include example \( -name "*.cpp" -o -name "*.hpp" \) -print0 | xargs -0 clang-tidy -p build/simple -fix
         platforms: [linux, darwin]
-      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,example | ForEach-Object { clang-tidy -p build/simple -fix $_.FullName }"
+      - cmd: powershell -Command "Get-ChildItem -Recurse -Include *.cpp,*.hpp -Path source,include,example | ForEach-Object { clang-tidy -p build/simple -fix $_.FullName }"
         platforms: [windows]
 
   test:
