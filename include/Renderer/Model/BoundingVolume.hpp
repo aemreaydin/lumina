@@ -1,12 +1,19 @@
 #ifndef RENDERER_MODEL_BOUNDINGVOLUME_HPP
 #define RENDERER_MODEL_BOUNDINGVOLUME_HPP
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <span>
 
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
+
+struct Ray
+{
+  glm::vec3 Origin {0.0F};
+  glm::vec3 Direction {0.0F, 1.0F, 0.0F};
+};
 
 // Axis-Aligned Bounding Box
 struct AABB
@@ -86,6 +93,33 @@ struct AABB
       result.Expand(point);
     }
     return result;
+  }
+
+  // Ray-AABB intersection using the slab method.
+  // Returns true if the ray hits, writing the entry distance to t_hit.
+  [[nodiscard]] auto Intersects(const Ray& ray, float& t_hit) const -> bool
+  {
+    if (!IsValid()) {
+      return false;
+    }
+
+    const glm::vec3 inv_dir = 1.0F / ray.Direction;
+
+    const glm::vec3 t_min = (Min - ray.Origin) * inv_dir;
+    const glm::vec3 t_max = (Max - ray.Origin) * inv_dir;
+
+    const glm::vec3 t1 = glm::min(t_min, t_max);
+    const glm::vec3 t2 = glm::max(t_min, t_max);
+
+    const float t_near = std::max({t1.x, t1.y, t1.z});
+    const float t_far = std::min({t2.x, t2.y, t2.z});
+
+    if (t_near > t_far || t_far < 0.0F) {
+      return false;
+    }
+
+    t_hit = t_near >= 0.0F ? t_near : t_far;
+    return true;
   }
 };
 

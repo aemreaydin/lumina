@@ -119,6 +119,34 @@ auto Camera::GetViewProjectionMatrix() const -> glm::mat4
   return m_ProjectionMatrix * m_ViewMatrix;
 }
 
+auto Camera::ScreenPointToRay(float screen_x,
+                              float screen_y,
+                              float viewport_w,
+                              float viewport_h) const -> Ray
+{
+  // Convert screen coordinates to NDC (-1 to 1, Y flipped)
+  const float ndc_x = (screen_x / viewport_w) * 2.0F - 1.0F;
+  const float ndc_y = 1.0F - (screen_y / viewport_h) * 2.0F;
+
+  const glm::mat4 inv_vp = glm::inverse(GetViewProjectionMatrix());
+
+  // Unproject near and far points (depth 0-1 due to
+  // GLM_FORCE_DEPTH_ZERO_TO_ONE)
+  const glm::vec4 near_clip(ndc_x, ndc_y, 0.0F, 1.0F);
+  const glm::vec4 far_clip(ndc_x, ndc_y, 1.0F, 1.0F);
+
+  glm::vec4 near_world = inv_vp * near_clip;
+  glm::vec4 far_world = inv_vp * far_clip;
+
+  near_world /= near_world.w;
+  far_world /= far_world.w;
+
+  Ray ray;
+  ray.Origin = glm::vec3(near_world);
+  ray.Direction = glm::normalize(glm::vec3(far_world - near_world));
+  return ray;
+}
+
 void Camera::Move(const glm::vec3& offset)
 {
   m_Position += offset;

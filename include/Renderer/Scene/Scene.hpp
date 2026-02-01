@@ -34,6 +34,9 @@ public:
   // Find nodes by name
   [[nodiscard]] auto FindNode(const std::string& name) const -> SceneNode*;
 
+  // Pick the closest visible node intersected by a ray
+  [[nodiscard]] auto PickNode(const Ray& ray) const -> SceneNode*;
+
   // Scene properties
   void SetName(const std::string& name);
   [[nodiscard]] auto GetName() const -> const std::string&;

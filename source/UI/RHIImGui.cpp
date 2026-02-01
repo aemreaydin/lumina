@@ -169,6 +169,11 @@ void RHIImGui::SetCamera(Camera& camera)
   m_SettingsPanel->SetCamera(&camera);
 }
 
+void RHIImGui::SetSelectedNode(SceneNode* node)
+{
+  m_SceneHierarchyPanel->SetSelectedNode(node);
+}
+
 auto RHIImGui::IsSettingsVisible() const -> bool
 {
   return m_ShowSettings;

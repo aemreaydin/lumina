@@ -29,7 +29,7 @@ void OpenGLImGui::Init(Window& window)
   constexpr float BASE_FONT_SIZE = 15.0F;
   const float scale = window.GetDisplayScale();
   imgui_io.Fonts->AddFontFromFileTTF("fonts/InterVariable.ttf",
-                                      BASE_FONT_SIZE * scale);
+                                     BASE_FONT_SIZE * scale);
 
   // Apply flat theme and scale for HiDPI
   UIStyle::ApplyFlatTheme();

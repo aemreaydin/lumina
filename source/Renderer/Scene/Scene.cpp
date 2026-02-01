@@ -133,6 +133,24 @@ auto Scene::GetActiveCamera() const -> Camera*
   return m_ActiveCamera;
 }
 
+auto Scene::PickNode(const Ray& ray) const -> SceneNode*
+{
+  const auto nodes = GetRenderableNodes();
+  SceneNode* closest = nullptr;
+  float closest_t = std::numeric_limits<float>::max();
+
+  for (auto* node : nodes) {
+    const AABB bounds = node->GetWorldBounds();
+    float t_hit = 0.0F;
+    if (bounds.Intersects(ray, t_hit) && t_hit < closest_t) {
+      closest_t = t_hit;
+      closest = node;
+    }
+  }
+
+  return closest;
+}
+
 auto Scene::MakeUniqueName(const std::string& name) const -> std::string
 {
   if (FindNode(name) == nullptr) {

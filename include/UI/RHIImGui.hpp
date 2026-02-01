@@ -7,6 +7,7 @@ struct ImVec2;
 
 class Window;
 class Scene;
+class SceneNode;
 class RHIDevice;
 class Camera;
 class SettingsPanel;
@@ -27,6 +28,7 @@ public:
   void ToggleSceneHierarchy();
 
   void SetCamera(Camera& camera);
+  void SetSelectedNode(SceneNode* node);
 
   [[nodiscard]] auto IsSettingsVisible() const -> bool;
   [[nodiscard]] auto IsSceneHierarchyVisible() const -> bool;

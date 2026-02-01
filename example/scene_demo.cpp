@@ -124,6 +124,18 @@ protected:
       }
     }
 
+    // Viewport picking on left click
+    if (Input::IsMouseButtonPressed(MouseButton::Left)) {
+      auto* swapchain = GetDevice().GetSwapchain();
+      const auto mouse_pos = Input::GetMousePosition();
+      const auto ray =
+          m_Camera.ScreenPointToRay(mouse_pos.x,
+                                    mouse_pos.y,
+                                    static_cast<float>(swapchain->GetWidth()),
+                                    static_cast<float>(swapchain->GetHeight()));
+      GetImGui().SetSelectedNode(m_Scene->PickNode(ray));
+    }
+
     m_ActiveController->Update(delta_time);
 
     auto* swapchain = GetDevice().GetSwapchain();

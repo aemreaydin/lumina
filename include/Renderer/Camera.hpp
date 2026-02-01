@@ -7,6 +7,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
+#include "Renderer/Model/BoundingVolume.hpp"
+
 enum class ProjectionType : uint8_t
 {
   Perspective,
@@ -50,6 +52,11 @@ public:
   [[nodiscard]] auto GetViewMatrix() const -> const glm::mat4&;
   [[nodiscard]] auto GetProjectionMatrix() const -> const glm::mat4&;
   [[nodiscard]] auto GetViewProjectionMatrix() const -> glm::mat4;
+
+  [[nodiscard]] auto ScreenPointToRay(float screen_x,
+                                      float screen_y,
+                                      float viewport_w,
+                                      float viewport_h) const -> Ray;
 
   void Move(const glm::vec3& offset);
   void MoveRelative(const glm::vec3& offset);
