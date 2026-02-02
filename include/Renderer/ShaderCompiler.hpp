@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "Renderer/ShaderReflection.hpp"
+
 enum class ShaderType : std::uint8_t
 {
   Vertex,
@@ -14,10 +16,16 @@ enum class ShaderType : std::uint8_t
 };
 using ShaderSources = std::map<ShaderType, std::vector<uint32_t>>;
 
+struct ShaderCompileResult
+{
+  ShaderSources Sources;
+  ShaderReflectionData Reflection;
+};
+
 class ShaderCompiler
 {
 public:
-  static auto Compile(const std::string& shader_path) -> ShaderSources;
+  static auto Compile(const std::string& shader_path) -> ShaderCompileResult;
 };
 
 #endif

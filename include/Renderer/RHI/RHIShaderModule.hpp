@@ -51,20 +51,12 @@ constexpr auto ToString(ShaderStage stage) -> std::string
       | std::ranges::to<std::string>();
 }
 
-struct PushConstant
-{
-  ShaderStage Stages {ShaderStage::Vertex};
-  uint32_t Size {0};
-  uint32_t Offset {0};
-};
-
 struct ShaderModuleDesc
 {
   ShaderStage Stage {ShaderStage::Vertex};
   std::vector<uint32_t> SPIRVCode;
   std::string EntryPoint {"main"};
   std::vector<std::shared_ptr<RHIDescriptorSetLayout>> SetLayouts;
-  std::vector<PushConstant> PushConstants;
 };
 
 class RHIShaderModule

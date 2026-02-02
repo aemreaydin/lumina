@@ -40,7 +40,7 @@ protected:
     const auto shader_sources =
         ShaderCompiler::Compile("shaders/triangle.slang");
 
-    const auto& vertex_spirv = shader_sources.at(ShaderType::Vertex);
+    const auto& vertex_spirv = shader_sources.Sources.at(ShaderType::Vertex);
     ShaderModuleDesc vertex_desc {};
     vertex_desc.Stage = ShaderStage::Vertex;
     vertex_desc.SPIRVCode = vertex_spirv;
@@ -48,7 +48,7 @@ protected:
     vertex_desc.SetLayouts = {m_DescriptorSetLayout};
     m_VertexShader = GetDevice().CreateShaderModule(vertex_desc);
 
-    const auto& fragment_spirv = shader_sources.at(ShaderType::Fragment);
+    const auto& fragment_spirv = shader_sources.Sources.at(ShaderType::Fragment);
     ShaderModuleDesc fragment_desc {};
     fragment_desc.Stage = ShaderStage::Fragment;
     fragment_desc.SPIRVCode = fragment_spirv;

@@ -11,7 +11,6 @@
 #include "Renderer/RHI/RHIDescriptorSet.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
 #include "Renderer/RHI/RHISampler.hpp"
-#include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/RHI/RHITexture.hpp"
 
 AssetManager::AssetManager(RHIDevice& device)
@@ -178,6 +177,12 @@ auto AssetManager::GetMaterialDescriptorSetLayout() const
   return m_MaterialDescriptorSetLayout;
 }
 
+void AssetManager::SetMaterialDescriptorSetLayout(
+    std::shared_ptr<RHIDescriptorSetLayout> layout)
+{
+  m_MaterialDescriptorSetLayout = std::move(layout);
+}
+
 void AssetManager::UnloadUnusedAssets()
 {
   // Remove textures with only one reference (the cache itself)
@@ -276,21 +281,6 @@ void AssetManager::create_default_resources()
     m_DefaultSampler = m_Device.CreateSampler(desc);
   }
 
-  // Create material descriptor set layout
-  // Set 2: Material data
-  // Binding 0: MaterialProperties uniform buffer
-  // Binding 1: BaseColorTexture + Sampler
-  // Binding 2: NormalTexture + Sampler
-  {
-    DescriptorSetLayoutDesc layout_desc {};
-    layout_desc.Bindings = {
-        {0, DescriptorType::UniformBuffer, ShaderStage::Fragment, 1},
-        {1, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1},
-        {2, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1},
-    };
-    m_MaterialDescriptorSetLayout =
-        m_Device.CreateDescriptorSetLayout(layout_desc);
-  }
 }
 
 auto AssetManager::resolve_asset_path(const std::filesystem::path& path) const

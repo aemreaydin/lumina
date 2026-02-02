@@ -64,6 +64,8 @@ void SceneHierarchyPanel::Render(Scene& scene, float animation_progress)
   ImGui::End();
 
   ImGui::PopStyleVar();
+
+  m_NodesToExpand.clear();
 }
 
 void SceneHierarchyPanel::renderNode(SceneNode* node)
@@ -82,13 +84,12 @@ void SceneHierarchyPanel::renderNode(SceneNode* node)
     flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
   }
 
-  // Draw full-row selection highlight (before widgets so it renders behind)
   if (is_selected) {
-    ImVec2 row_min(ImGui::GetWindowPos().x, ImGui::GetCursorScreenPos().y);
-    ImVec2 row_max(row_min.x + ImGui::GetWindowWidth(),
-                   row_min.y + ImGui::GetFrameHeight());
-    ImGui::GetWindowDrawList()->AddRectFilled(
-        row_min, row_max, ImGui::GetColorU32(ImGuiCol_Header));
+    flags |= ImGuiTreeNodeFlags_Selected;
+  }
+
+  if (m_NodesToExpand.contains(node)) {
+    ImGui::SetNextItemOpen(true);
   }
 
   const bool node_open = ImGui::TreeNodeEx(
@@ -186,6 +187,16 @@ void SceneHierarchyPanel::SetSelectedNode(SceneNode* node)
 {
   if (m_SelectedNode != node) {
     m_SelectedNode = node;
+
+    // Collect ancestors so the hierarchy panel expands to reveal the selection
+    m_NodesToExpand.clear();
+    for (SceneNode* ancestor = node ? node->GetParent() : nullptr;
+         ancestor != nullptr;
+         ancestor = ancestor->GetParent())
+    {
+      m_NodesToExpand.insert(ancestor);
+    }
+
     if (m_OnSelectionChanged) {
       m_OnSelectionChanged(node);
     }

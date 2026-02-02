@@ -66,6 +66,8 @@ public:
   [[nodiscard]] auto GetDefaultSampler() const -> RHISampler*;
   [[nodiscard]] auto GetMaterialDescriptorSetLayout() const
       -> std::shared_ptr<RHIDescriptorSetLayout>;
+  void SetMaterialDescriptorSetLayout(
+      std::shared_ptr<RHIDescriptorSetLayout> layout);
 
   // Resource management
   void UnloadUnusedAssets();

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <unordered_map>
 
 #include "Renderer/RHI/RHIDescriptorSet.hpp"
@@ -52,6 +53,7 @@ public:
                                  RHISampler* sampler) override;
 
   void Bind() const;
+  void Bind(std::span<const uint32_t> dynamic_offsets) const;
 
 private:
   std::shared_ptr<RHIDescriptorSetLayout> m_Layout;

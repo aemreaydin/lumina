@@ -139,6 +139,13 @@ void OpenGLCommandBuffer::BindVertexBuffer(const RHIBuffer& buffer,
   }
   glBindVertexArray(m_VAO);
   glBindBuffer(GL_ARRAY_BUFFER, gl_buffer.GetGLBuffer());
+
+  // Apply vertex attributes now that a buffer is bound.
+  // glVertexAttribPointer captures the current GL_ARRAY_BUFFER, so this
+  // must happen after the buffer bind.
+  if (m_HasPendingLayout) {
+    applyVertexLayout();
+  }
 }
 
 void OpenGLCommandBuffer::BindIndexBuffer(const RHIBuffer& buffer)
@@ -149,12 +156,13 @@ void OpenGLCommandBuffer::BindIndexBuffer(const RHIBuffer& buffer)
 
 void OpenGLCommandBuffer::SetVertexInput(const VertexInputLayout& layout)
 {
-  if (m_VAO == 0) {
-    glGenVertexArrays(1, &m_VAO);
-    glBindVertexArray(m_VAO);
-  }
+  m_PendingLayout = layout;
+  m_HasPendingLayout = true;
+}
 
-  for (const auto& attr : layout.Attributes) {
+void OpenGLCommandBuffer::applyVertexLayout()
+{
+  for (const auto& attr : m_PendingLayout.Attributes) {
     GLint size = 3;
     GLenum type = GL_FLOAT;
 
@@ -187,7 +195,7 @@ void OpenGLCommandBuffer::SetVertexInput(const VertexInputLayout& layout)
         size,
         type,
         GL_FALSE,
-        static_cast<GLsizei>(layout.Stride),
+        static_cast<GLsizei>(m_PendingLayout.Stride),
         reinterpret_cast<const void*>(static_cast<uintptr_t>(attr.Offset)));
   }
 }
@@ -216,13 +224,14 @@ void OpenGLCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
 void OpenGLCommandBuffer::BindDescriptorSet(
     [[maybe_unused]] uint32_t set_index,
     const RHIDescriptorSet& descriptor_set,
-    [[maybe_unused]] const RHIPipelineLayout& layout)
+    [[maybe_unused]] const RHIPipelineLayout& layout,
+    std::span<const uint32_t> dynamic_offsets)
 {
   // For OpenGL, we directly bind the UBOs to their binding points
   // The set_index is ignored since OpenGL has a flat binding namespace
   const auto& gl_descriptor_set =
       dynamic_cast<const OpenGLDescriptorSet&>(descriptor_set);
-  gl_descriptor_set.Bind();
+  gl_descriptor_set.Bind(dynamic_offsets);
 }
 
 void OpenGLCommandBuffer::Draw(uint32_t vertex_count,
@@ -268,12 +277,3 @@ void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
   }
 }
 
-void OpenGLCommandBuffer::PushConstants(
-    [[maybe_unused]] const RHIPipelineLayout& layout,
-    [[maybe_unused]] const PushConstant& push_constant,
-    [[maybe_unused]] const void* data)
-{
-  // OpenGL doesn't have native push constants
-  // TODO: Implement via uniform buffer or direct uniform upload
-  Logger::Warn("PushConstants not implemented for OpenGL backend");
-}

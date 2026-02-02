@@ -31,8 +31,11 @@ protected:
 
     m_AssetManager = std::make_unique<AssetManager>(GetDevice());
 
-    m_SceneRenderer =
-        std::make_unique<SceneRenderer>(GetDevice(), *m_AssetManager);
+    m_SceneRenderer = std::make_unique<SceneRenderer>(GetDevice());
+
+    // Pass the reflected material layout from shader to AssetManager
+    m_AssetManager->SetMaterialDescriptorSetLayout(
+        m_SceneRenderer->GetSetLayout("material"));
 
     m_Scene = std::make_unique<Scene>("Demo Scene");
 
@@ -86,7 +89,7 @@ protected:
 
     Logger::Info("Scene created with {} nodes", m_Scene->GetNodeCount());
     Logger::Info("Controls: 1=Orbit camera, 2=FPS camera, ESC=Exit");
-    Logger::Info("          R=Rotate node1, Space=Toggle child visibility");
+    Logger::Info("          R=Rotate node1");
     Logger::Info("          F1=Settings, F2=Scene Hierarchy");
   }
 
@@ -116,13 +119,6 @@ protected:
       }
     }
 
-    if (Input::IsKeyPressed(KeyCode::Space)) {
-      auto* child = m_Scene->FindNode("ChildBall");
-      if (child != nullptr) {
-        child->SetVisible(!child->IsVisible());
-        Logger::Info("Child visibility: {}", child->IsVisible() ? "on" : "off");
-      }
-    }
 
     // Viewport picking on left click
     if (Input::IsMouseButtonPressed(MouseButton::Left)) {

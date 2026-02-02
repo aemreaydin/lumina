@@ -683,8 +683,10 @@ void VulkanDevice::create_descriptor_pool()
   // Create a general-purpose descriptor pool
   // These limits can be adjusted based on actual needs
   const uint32_t pool_size = 100;
-  std::array<VkDescriptorPoolSize, 4> pool_sizes = {{
+  std::array<VkDescriptorPoolSize, 5> pool_sizes = {{
       {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = pool_size},
+      {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+       .descriptorCount = pool_size},
       {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = pool_size},
       {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
        .descriptorCount = pool_size},

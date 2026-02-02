@@ -69,16 +69,47 @@ void OpenGLDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
 
 void OpenGLDescriptorSet::Bind() const
 {
+  Bind({});
+}
+
+void OpenGLDescriptorSet::Bind(std::span<const uint32_t> dynamic_offsets) const
+{
+  const auto* gl_layout =
+      dynamic_cast<const OpenGLDescriptorSetLayout*>(m_Layout.get());
+  const auto& layout_bindings =
+      gl_layout != nullptr ? gl_layout->GetBindings()
+                           : std::vector<DescriptorBinding> {};
+
+  uint32_t dynamic_offset_idx = 0;
+
   // Bind uniform buffers
   for (const auto& [binding, buffer_binding] : m_BufferBindings) {
     if (buffer_binding.Buffer == nullptr) {
       continue;
     }
 
+    size_t offset = buffer_binding.Offset;
+
+    // Check if this binding is a dynamic uniform buffer
+    bool is_dynamic = false;
+    for (const auto& lb : layout_bindings) {
+      if (lb.Binding == binding
+          && lb.Type == DescriptorType::DynamicUniformBuffer)
+      {
+        is_dynamic = true;
+        break;
+      }
+    }
+
+    if (is_dynamic && dynamic_offset_idx < dynamic_offsets.size()) {
+      offset += dynamic_offsets[dynamic_offset_idx];
+      ++dynamic_offset_idx;
+    }
+
     glBindBufferRange(GL_UNIFORM_BUFFER,
                       binding,
                       buffer_binding.Buffer->GetGLBuffer(),
-                      static_cast<GLintptr>(buffer_binding.Offset),
+                      static_cast<GLintptr>(offset),
                       static_cast<GLsizeiptr>(buffer_binding.Range));
   }
 

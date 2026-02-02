@@ -14,6 +14,7 @@ class RHISampler;
 enum class DescriptorType : uint8_t
 {
   UniformBuffer,
+  DynamicUniformBuffer,
   Sampler,
   SampledImage,
   CombinedImageSampler,

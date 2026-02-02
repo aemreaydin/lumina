@@ -2,6 +2,7 @@
 #define UI_SCENEHIERARCHYPANEL_HPP
 
 #include <functional>
+#include <unordered_set>
 
 class Scene;
 class SceneNode;
@@ -23,6 +24,7 @@ private:
   SceneNode* m_SelectedNode = nullptr;
   SceneNode* m_DraggedNode = nullptr;
   std::function<void(SceneNode*)> m_OnSelectionChanged;
+  std::unordered_set<SceneNode*> m_NodesToExpand;
 };
 
 #endif

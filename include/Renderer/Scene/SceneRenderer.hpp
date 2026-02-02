@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 
 #include "Renderer/RHI/RHIPipeline.hpp"
+#include "Renderer/ShaderCompiler.hpp"
+#include "Renderer/ShaderParameterPolicy.hpp"
 
 class Scene;
 class SceneNode;
@@ -17,7 +19,6 @@ class RHIDescriptorSetLayout;
 class RHIPipelineLayout;
 class RHIShaderModule;
 class RHICommandBuffer;
-class AssetManager;
 
 struct CameraUBO
 {
@@ -36,7 +37,7 @@ struct NodeUBO
 class SceneRenderer
 {
 public:
-  SceneRenderer(RHIDevice& device, AssetManager& asset_manager);
+  explicit SceneRenderer(RHIDevice& device);
   ~SceneRenderer();
 
   SceneRenderer(const SceneRenderer&) = delete;
@@ -53,40 +54,42 @@ public:
   // Render a single node (useful for custom rendering)
   void RenderNode(RHICommandBuffer& cmd, const SceneNode& node);
 
-  // Get layouts for external use (e.g., creating compatible pipelines)
-  [[nodiscard]] auto GetCameraDescriptorSetLayout() const
-      -> std::shared_ptr<RHIDescriptorSetLayout>;
-  [[nodiscard]] auto GetNodeDescriptorSetLayout() const
+  // Get reflected layouts for external use (looked up by parameter name)
+  [[nodiscard]] auto GetSetLayout(const std::string& parameter_name) const
       -> std::shared_ptr<RHIDescriptorSetLayout>;
   [[nodiscard]] auto GetPipelineLayout() const
       -> std::shared_ptr<RHIPipelineLayout>;
 
 private:
-  void create_shaders();
-  void create_descriptor_layouts();
+  void compile_and_reflect();
   void create_pipeline_layout();
+  void create_shaders();
   void create_camera_resources();
   void update_camera_ubo(const Camera& camera);
 
   RHIDevice& m_Device;
-  AssetManager& m_AssetManager;
+
+  // Compiled shaders and reflection data
+  ShaderCompileResult m_CompileResult;
+  ReflectedPipelineLayout m_ReflectedLayout;
 
   // Shaders
   std::unique_ptr<RHIShaderModule> m_VertexShader;
   std::unique_ptr<RHIShaderModule> m_FragmentShader;
 
-  // Descriptor set layouts (Set 0 = Camera, Set 1 = Node, Set 2 = Material)
-  std::shared_ptr<RHIDescriptorSetLayout> m_CameraSetLayout;
-  std::shared_ptr<RHIDescriptorSetLayout> m_NodeSetLayout;
+  // Pipeline layout
   std::shared_ptr<RHIPipelineLayout> m_PipelineLayout;
 
   // Per-frame camera resources
   std::unique_ptr<RHIBuffer> m_CameraUBO;
   std::unique_ptr<RHIDescriptorSet> m_CameraDescriptorSet;
 
-  // Per-node resources (reused each frame)
-  std::unique_ptr<RHIBuffer> m_NodeUBO;
-  PushConstant m_NodePushConstant;
+  // Dynamic UBO for per-draw node transforms
+  std::unique_ptr<RHIBuffer> m_NodeDynamicBuffer;
+  std::unique_ptr<RHIDescriptorSet> m_NodeDescriptorSet;
+  uint32_t m_NodeSetIndex {0};
+  uint32_t m_NodeDynamicOffset {0};
+  uint32_t m_NodeAlignment {256};
 };
 
 #endif

@@ -59,6 +59,8 @@ constexpr auto ToVkDescriptorType(DescriptorType type) -> VkDescriptorType
   switch (type) {
     case DescriptorType::UniformBuffer:
       return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    case DescriptorType::DynamicUniformBuffer:
+      return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     case DescriptorType::StorageBuffer:
       return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     case DescriptorType::Sampler:

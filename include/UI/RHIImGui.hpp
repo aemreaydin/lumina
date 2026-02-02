@@ -2,6 +2,9 @@
 #define UI_RHIIMGUI_HPP
 
 #include <memory>
+#include <optional>
+
+#include "Renderer/RendererConfig.hpp"
 
 struct ImVec2;
 
@@ -29,6 +32,8 @@ public:
 
   void SetCamera(Camera& camera);
   void SetSelectedNode(SceneNode* node);
+  void SetCurrentAPI(RenderAPI api);
+  auto GetPendingBackendSwitch() -> std::optional<RenderAPI>;
 
   [[nodiscard]] auto IsSettingsVisible() const -> bool;
   [[nodiscard]] auto IsSceneHierarchyVisible() const -> bool;

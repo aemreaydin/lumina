@@ -1,7 +1,6 @@
 #include "Renderer/Scene/SceneRenderer.hpp"
 
 #include "Core/Logger.hpp"
-#include "Renderer/Asset/AssetManager.hpp"
 #include "Renderer/Camera.hpp"
 #include "Renderer/Model/Material.hpp"
 #include "Renderer/Model/Mesh.hpp"
@@ -15,13 +14,11 @@
 #include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/Scene/Scene.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
-#include "Renderer/ShaderCompiler.hpp"
 
-SceneRenderer::SceneRenderer(RHIDevice& device, AssetManager& asset_manager)
+SceneRenderer::SceneRenderer(RHIDevice& device)
     : m_Device(device)
-    , m_AssetManager(asset_manager)
 {
-  create_descriptor_layouts();
+  compile_and_reflect();
   create_pipeline_layout();
   create_shaders();
   create_camera_resources();
@@ -32,6 +29,7 @@ SceneRenderer::~SceneRenderer() = default;
 void SceneRenderer::BeginFrame(const Camera& camera)
 {
   update_camera_ubo(camera);
+  m_NodeDynamicOffset = 0;
 }
 
 void SceneRenderer::RenderScene(RHICommandBuffer& cmd, const Scene& scene)
@@ -41,7 +39,10 @@ void SceneRenderer::RenderScene(RHICommandBuffer& cmd, const Scene& scene)
 
   cmd.SetVertexInput(Vertex::GetLayout());
 
-  cmd.BindDescriptorSet(0, *m_CameraDescriptorSet, *m_PipelineLayout);
+  cmd.BindDescriptorSet(
+      m_ReflectedLayout.GetSetIndex("camera"),
+      *m_CameraDescriptorSet,
+      *m_PipelineLayout);
 
   auto renderable_nodes = scene.GetRenderableNodes();
   for (auto* node : renderable_nodes) {
@@ -59,7 +60,16 @@ void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
   NodeUBO data {};
   data.Model = node.GetTransform().GetWorldMatrix();
   data.NormalMatrix = glm::mat4(node.GetTransform().GetNormalMatrix());
-  cmd.PushConstants(*m_PipelineLayout, m_NodePushConstant, &data);
+
+  m_NodeDynamicBuffer->Upload(&data, sizeof(NodeUBO), m_NodeDynamicOffset);
+
+  uint32_t offsets[] = {m_NodeDynamicOffset};
+  cmd.BindDescriptorSet(
+      m_NodeSetIndex, *m_NodeDescriptorSet, *m_PipelineLayout, offsets);
+
+  // Advance offset (aligned)
+  m_NodeDynamicOffset = (m_NodeDynamicOffset + sizeof(NodeUBO) + m_NodeAlignment - 1)
+                      & ~(m_NodeAlignment - 1);
 
   // Render each mesh in the model
   for (size_t mesh_idx = 0; mesh_idx < model->GetMeshCount(); ++mesh_idx) {
@@ -82,7 +92,9 @@ void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
       auto* material = model->GetMaterial(submesh.MaterialIndex);
       if (material != nullptr && material->GetDescriptorSet() != nullptr) {
         cmd.BindDescriptorSet(
-            1, *material->GetDescriptorSet(), *m_PipelineLayout);
+            m_ReflectedLayout.GetSetIndex("material"),
+            *material->GetDescriptorSet(),
+            *m_PipelineLayout);
       }
 
       // Draw the submesh
@@ -95,16 +107,10 @@ void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
   }
 }
 
-auto SceneRenderer::GetCameraDescriptorSetLayout() const
+auto SceneRenderer::GetSetLayout(const std::string& parameter_name) const
     -> std::shared_ptr<RHIDescriptorSetLayout>
 {
-  return m_CameraSetLayout;
-}
-
-auto SceneRenderer::GetNodeDescriptorSetLayout() const
-    -> std::shared_ptr<RHIDescriptorSetLayout>
-{
-  return m_NodeSetLayout;
+  return m_ReflectedLayout.GetSetLayout(parameter_name);
 }
 
 auto SceneRenderer::GetPipelineLayout() const
@@ -113,54 +119,44 @@ auto SceneRenderer::GetPipelineLayout() const
   return m_PipelineLayout;
 }
 
-void SceneRenderer::create_shaders()
+void SceneRenderer::compile_and_reflect()
 {
-  auto shader_sources = ShaderCompiler::Compile("shaders/scene.slang");
+  m_CompileResult = ShaderCompiler::Compile("shaders/scene.slang");
 
-  const auto& vertex_spirv = shader_sources.at(ShaderType::Vertex);
-  ShaderModuleDesc vertex_desc {};
-  vertex_desc.Stage = ShaderStage::Vertex;
-  vertex_desc.SPIRVCode = vertex_spirv;
-  vertex_desc.EntryPoint = "vertexMain";
-  vertex_desc.SetLayouts = {m_CameraSetLayout,
-                            m_AssetManager.GetMaterialDescriptorSetLayout()};
-  vertex_desc.PushConstants = {m_NodePushConstant};
-  m_VertexShader = m_Device.CreateShaderModule(vertex_desc);
-
-  const auto& fragment_spirv = shader_sources.at(ShaderType::Fragment);
-  ShaderModuleDesc fragment_desc {};
-  fragment_desc.Stage = ShaderStage::Fragment;
-  fragment_desc.SPIRVCode = fragment_spirv;
-  fragment_desc.EntryPoint = "fragmentMain";
-  fragment_desc.SetLayouts = {m_CameraSetLayout,
-                              m_AssetManager.GetMaterialDescriptorSetLayout()};
-  fragment_desc.PushConstants = {m_NodePushConstant};
-  m_FragmentShader = m_Device.CreateShaderModule(fragment_desc);
-}
-
-void SceneRenderer::create_descriptor_layouts()
-{
-  DescriptorSetLayoutDesc camera_layout_desc {};
-  camera_layout_desc.Bindings = {
-      {0,
-       DescriptorType::UniformBuffer,
-       ShaderStage::Vertex | ShaderStage::Fragment,
-       1},
-  };
-  m_CameraSetLayout = m_Device.CreateDescriptorSetLayout(camera_layout_desc);
+  Logger::Info("Shader compiled with {} descriptor sets",
+               m_CompileResult.Reflection.DescriptorSets.size());
 }
 
 void SceneRenderer::create_pipeline_layout()
 {
-  PipelineLayoutDesc layout_desc {};
-  layout_desc.SetLayouts = {m_CameraSetLayout,
-                            m_AssetManager.GetMaterialDescriptorSetLayout()};
+  ShaderParameterPolicy policy;
+  policy.DynamicBufferNames.insert("node");
 
-  m_NodePushConstant.Stages = ShaderStage::Vertex;
-  m_NodePushConstant.Size = sizeof(NodeUBO);
-  m_NodePushConstant.Offset = 0;
-  layout_desc.PushConstants = {m_NodePushConstant};
-  m_PipelineLayout = m_Device.CreatePipelineLayout(layout_desc);
+  m_ReflectedLayout = CreatePipelineLayoutFromReflection(
+      m_Device, m_CompileResult.Reflection, policy);
+
+  m_PipelineLayout = m_Device.CreatePipelineLayout(m_ReflectedLayout.Desc);
+}
+
+void SceneRenderer::create_shaders()
+{
+  const auto& vertex_spirv =
+      m_CompileResult.Sources.at(ShaderType::Vertex);
+  ShaderModuleDesc vertex_desc {};
+  vertex_desc.Stage = ShaderStage::Vertex;
+  vertex_desc.SPIRVCode = vertex_spirv;
+  vertex_desc.EntryPoint = "vertexMain";
+  vertex_desc.SetLayouts = m_ReflectedLayout.SetLayouts;
+  m_VertexShader = m_Device.CreateShaderModule(vertex_desc);
+
+  const auto& fragment_spirv =
+      m_CompileResult.Sources.at(ShaderType::Fragment);
+  ShaderModuleDesc fragment_desc {};
+  fragment_desc.Stage = ShaderStage::Fragment;
+  fragment_desc.SPIRVCode = fragment_spirv;
+  fragment_desc.EntryPoint = "fragmentMain";
+  fragment_desc.SetLayouts = m_ReflectedLayout.SetLayouts;
+  m_FragmentShader = m_Device.CreateShaderModule(fragment_desc);
 }
 
 void SceneRenderer::create_camera_resources()
@@ -172,16 +168,24 @@ void SceneRenderer::create_camera_resources()
   camera_buffer_desc.CPUVisible = true;
   m_CameraUBO = m_Device.CreateBuffer(camera_buffer_desc);
 
-  // Camera descriptor set
-  m_CameraDescriptorSet = m_Device.CreateDescriptorSet(m_CameraSetLayout);
+  // Camera descriptor set using reflected layout
+  auto camera_layout = m_ReflectedLayout.GetSetLayout("camera");
+  m_CameraDescriptorSet = m_Device.CreateDescriptorSet(camera_layout);
   m_CameraDescriptorSet->WriteBuffer(
       0, m_CameraUBO.get(), 0, sizeof(CameraUBO));
 
-  BufferDesc node_buffer_desc {};
-  node_buffer_desc.Size = sizeof(NodeUBO);
-  node_buffer_desc.Usage = BufferUsage::Uniform;
-  node_buffer_desc.CPUVisible = true;
-  m_NodeUBO = m_Device.CreateBuffer(node_buffer_desc);
+  // Node dynamic UBO — room for up to 1024 draws per frame
+  BufferDesc node_desc {};
+  node_desc.Size = 1024 * m_NodeAlignment;
+  node_desc.Usage = BufferUsage::Uniform;
+  node_desc.CPUVisible = true;
+  m_NodeDynamicBuffer = m_Device.CreateBuffer(node_desc);
+
+  // Descriptor set for node (set index from reflection)
+  m_NodeSetIndex = m_ReflectedLayout.GetSetIndex("node");
+  auto node_layout = m_ReflectedLayout.GetSetLayout("node");
+  m_NodeDescriptorSet = m_Device.CreateDescriptorSet(node_layout);
+  m_NodeDescriptorSet->WriteBuffer(0, m_NodeDynamicBuffer.get(), 0, sizeof(NodeUBO));
 }
 
 void SceneRenderer::update_camera_ubo(const Camera& camera)

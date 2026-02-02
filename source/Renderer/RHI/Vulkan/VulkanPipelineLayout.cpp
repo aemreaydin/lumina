@@ -29,23 +29,12 @@ VulkanPipelineLayout::VulkanPipelineLayout(const VulkanDevice& device,
         (vk_layout->GetVkDescriptorSetLayout());
   }
 
-  std::vector<VkPushConstantRange> vk_push_constants(desc.PushConstants.size());
-  for (const auto& [index, push_constant] :
-       std::ranges::views::enumerate(desc.PushConstants))
-  {
-    vk_push_constants.at(static_cast<size_t>(index)) = {
-        .stageFlags = VkUtils::ToVkShaderStageFlags(push_constant.Stages),
-        .offset = push_constant.Offset,
-        .size = push_constant.Size};
-  }
-
   VkPipelineLayoutCreateInfo layout_info {};
   layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   layout_info.setLayoutCount = static_cast<uint32_t>(vk_set_layouts.size());
   layout_info.pSetLayouts = vk_set_layouts.data();
-  layout_info.pushConstantRangeCount =
-      static_cast<uint32_t>(vk_push_constants.size());
-  layout_info.pPushConstantRanges = vk_push_constants.data();
+  layout_info.pushConstantRangeCount = 0;
+  layout_info.pPushConstantRanges = nullptr;
 
   if (auto result = VkUtils::Check(vkCreatePipelineLayout(
           m_Device.GetVkDevice(), &layout_info, nullptr, &m_PipelineLayout));

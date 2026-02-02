@@ -441,7 +441,8 @@ void VulkanCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
 void VulkanCommandBuffer::BindDescriptorSet(
     uint32_t set_index,
     const RHIDescriptorSet& descriptor_set,
-    const RHIPipelineLayout& layout)
+    const RHIPipelineLayout& layout,
+    std::span<const uint32_t> dynamic_offsets)
 {
   const auto& vk_descriptor_set =
       dynamic_cast<const VulkanDescriptorSet&>(descriptor_set);
@@ -455,8 +456,8 @@ void VulkanCommandBuffer::BindDescriptorSet(
                           set_index,
                           1,
                           &vk_set,
-                          0,
-                          nullptr);
+                          static_cast<uint32_t>(dynamic_offsets.size()),
+                          dynamic_offsets.data());
 }
 
 void VulkanCommandBuffer::Draw(uint32_t vertex_count,
@@ -485,16 +486,3 @@ void VulkanCommandBuffer::DrawIndexed(uint32_t index_count,
                    first_instance);
 }
 
-void VulkanCommandBuffer::PushConstants(const RHIPipelineLayout& layout,
-                                        const PushConstant& push_constant,
-                                        const void* data)
-{
-  const auto& vk_layout = dynamic_cast<const VulkanPipelineLayout&>(layout);
-
-  vkCmdPushConstants(m_CommandBuffer,
-                     vk_layout.GetVkPipelineLayout(),
-                     VkUtils::ToVkShaderStageFlags(push_constant.Stages),
-                     push_constant.Offset,
-                     push_constant.Size,
-                     data);
-}

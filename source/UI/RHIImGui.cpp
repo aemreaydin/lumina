@@ -174,6 +174,16 @@ void RHIImGui::SetSelectedNode(SceneNode* node)
   m_SceneHierarchyPanel->SetSelectedNode(node);
 }
 
+void RHIImGui::SetCurrentAPI(RenderAPI api)
+{
+  m_SettingsPanel->SetCurrentAPI(api);
+}
+
+auto RHIImGui::GetPendingBackendSwitch() -> std::optional<RenderAPI>
+{
+  return m_SettingsPanel->GetPendingBackendSwitch();
+}
+
 auto RHIImGui::IsSettingsVisible() const -> bool
 {
   return m_ShowSettings;

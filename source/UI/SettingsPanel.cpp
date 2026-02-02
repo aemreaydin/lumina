@@ -60,10 +60,30 @@ void SettingsPanel::SetResolution(uint32_t width, uint32_t height)
   m_Height = height;
 }
 
+void SettingsPanel::SetCurrentAPI(RenderAPI api)
+{
+  m_CurrentAPI = api;
+}
+
+auto SettingsPanel::GetPendingBackendSwitch() -> std::optional<RenderAPI>
+{
+  auto pending = m_PendingBackendSwitch;
+  m_PendingBackendSwitch.reset();
+  return pending;
+}
+
 void SettingsPanel::renderRendererSection()
 {
   if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
-    ImGui::Text("API: %s", m_APIName.c_str());
+    constexpr const char* API_NAMES[] = {"OpenGL", "Vulkan"};
+    int current = static_cast<int>(m_CurrentAPI);
+    if (ImGui::Combo("Backend", &current, API_NAMES, IM_ARRAYSIZE(API_NAMES))) {
+      auto selected = static_cast<RenderAPI>(current);
+      if (selected != m_CurrentAPI) {
+        m_PendingBackendSwitch = selected;
+      }
+    }
+
     ImGui::Text("Validation: %s", m_ValidationEnabled ? "Enabled" : "Disabled");
 
     bool vsync = true;

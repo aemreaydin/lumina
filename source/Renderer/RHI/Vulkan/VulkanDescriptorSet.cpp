@@ -101,6 +101,19 @@ void VulkanDescriptorSet::WriteBuffer(uint32_t binding,
     return;
   }
 
+  // Look up the descriptor type from the layout
+  VkDescriptorType desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  const auto* vk_layout =
+      dynamic_cast<const VulkanDescriptorSetLayout*>(m_Layout.get());
+  if (vk_layout != nullptr) {
+    for (const auto& b : vk_layout->GetBindings()) {
+      if (b.Binding == binding) {
+        desc_type = VkUtils::ToVkDescriptorType(b.Type);
+        break;
+      }
+    }
+  }
+
   VkDescriptorBufferInfo buffer_info {};
   buffer_info.buffer = vk_buffer->GetVkBuffer();
   buffer_info.offset = offset;
@@ -111,7 +124,7 @@ void VulkanDescriptorSet::WriteBuffer(uint32_t binding,
   write.dstSet = m_DescriptorSet;
   write.dstBinding = binding;
   write.dstArrayElement = 0;
-  write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  write.descriptorType = desc_type;
   write.descriptorCount = 1;
   write.pBufferInfo = &buffer_info;
 

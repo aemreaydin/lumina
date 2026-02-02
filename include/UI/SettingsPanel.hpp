@@ -2,7 +2,10 @@
 #define UI_SETTINGSPANEL_HPP
 
 #include <cstdint>
+#include <optional>
 #include <string>
+
+#include "Renderer/RendererConfig.hpp"
 
 class RHIDevice;
 class Camera;
@@ -27,6 +30,9 @@ public:
   void SetValidationEnabled(bool enabled);
   void SetResolution(uint32_t width, uint32_t height);
 
+  void SetCurrentAPI(RenderAPI api);
+  auto GetPendingBackendSwitch() -> std::optional<RenderAPI>;
+
 private:
   void renderRendererSection();
   void renderCameraSection();
@@ -40,6 +46,10 @@ private:
   bool m_ValidationEnabled = false;
   uint32_t m_Width = 0;
   uint32_t m_Height = 0;
+
+  // Backend switch
+  RenderAPI m_CurrentAPI = RenderAPI::OpenGL;
+  std::optional<RenderAPI> m_PendingBackendSwitch;
 
   // Debug toggles
   bool m_Wireframe = false;

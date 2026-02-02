@@ -1,9 +1,12 @@
 #ifndef RENDERER_RHI_OPENGL_OPENGLCOMMANDBUFFER_HPP
 #define RENDERER_RHI_OPENGL_OPENGLCOMMANDBUFFER_HPP
 
+#include <span>
+
 #include <glad/glad.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
+#include "Renderer/RHI/RHIVertexLayout.hpp"
 #include "Renderer/RHI/RenderPassInfo.hpp"
 
 class OpenGLCommandBuffer final : public RHICommandBuffer
@@ -34,7 +37,8 @@ public:
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
   void BindDescriptorSet(uint32_t set_index,
                          const RHIDescriptorSet& descriptor_set,
-                         const RHIPipelineLayout& layout) override;
+                         const RHIPipelineLayout& layout,
+                         std::span<const uint32_t> dynamic_offsets = {}) override;
   void Draw(uint32_t vertex_count,
             uint32_t instance_count,
             uint32_t first_vertex,
@@ -44,9 +48,6 @@ public:
                    uint32_t first_index,
                    int32_t vertex_offset,
                    uint32_t first_instance) override;
-  void PushConstants(const RHIPipelineLayout& layout,
-                     const PushConstant& push_constant,
-                     const void* data) override;
 
 private:
   bool m_Recording {false};
@@ -54,6 +55,11 @@ private:
   GLuint m_CurrentProgram {0};
   GLuint m_VAO {0};
   GLenum m_PrimitiveMode {GL_TRIANGLES};
+
+  VertexInputLayout m_PendingLayout {};
+  bool m_HasPendingLayout {false};
+
+  void applyVertexLayout();
 };
 
 #endif

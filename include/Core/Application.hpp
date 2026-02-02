@@ -47,6 +47,13 @@ protected:
 
   [[nodiscard]] auto GetImGui() const -> const RHIImGui& { return *m_ImGui; }
 
+  [[nodiscard]] auto GetRendererConfig() const -> const RendererConfig&
+  {
+    return m_RendererConfig;
+  }
+
+  void SwitchBackend(RenderAPI new_api);
+
 private:
   static void InitSdl();
 

@@ -1,6 +1,8 @@
 #ifndef RENDERER_RHI_VULKAN_VULKANCOMMANDBUFFER_HPP
 #define RENDERER_RHI_VULKAN_VULKANCOMMANDBUFFER_HPP
 
+#include <span>
+
 #include <volk.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
@@ -42,7 +44,8 @@ public:
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
   void BindDescriptorSet(uint32_t set_index,
                          const RHIDescriptorSet& descriptor_set,
-                         const RHIPipelineLayout& layout) override;
+                         const RHIPipelineLayout& layout,
+                         std::span<const uint32_t> dynamic_offsets = {}) override;
   void Draw(uint32_t vertex_count,
             uint32_t instance_count,
             uint32_t first_vertex,
@@ -52,9 +55,6 @@ public:
                    uint32_t first_index,
                    int32_t vertex_offset,
                    uint32_t first_instance) override;
-  void PushConstants(const RHIPipelineLayout& layout,
-                     const PushConstant& push_constant,
-                     const void* data) override;
 
   [[nodiscard]] auto GetHandle() const -> VkCommandBuffer;
 
