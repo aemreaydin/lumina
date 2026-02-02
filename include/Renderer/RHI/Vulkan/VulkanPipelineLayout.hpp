@@ -8,13 +8,15 @@
 
 #include "Renderer/RHI/RHIPipeline.hpp"
 
+class RHIDescriptorSetLayout;
 class VulkanDevice;
 
 class VulkanPipelineLayout : public RHIPipelineLayout
 {
 public:
-  VulkanPipelineLayout(const VulkanDevice& device,
-                       const PipelineLayoutDesc& desc);
+  VulkanPipelineLayout(
+      const VulkanDevice& device,
+      const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts);
   ~VulkanPipelineLayout() override;
 
   VulkanPipelineLayout(const VulkanPipelineLayout&) = delete;

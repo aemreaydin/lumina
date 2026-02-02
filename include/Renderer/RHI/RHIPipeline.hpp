@@ -7,13 +7,6 @@
 #include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/RHI/RHIVertexLayout.hpp"
 
-class RHIDescriptorSetLayout;
-
-struct PipelineLayoutDesc
-{
-  std::vector<std::shared_ptr<RHIDescriptorSetLayout>> SetLayouts;
-};
-
 class RHIPipelineLayout
 {
 public:

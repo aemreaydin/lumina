@@ -31,13 +31,11 @@ auto AssetManager::LoadTexture(const std::filesystem::path& path,
   auto resolved_path = resolve_asset_path(path);
   auto key = GetCanonicalKey(resolved_path);
 
-  // Check cache
   auto iter = m_TextureCache.find(key);
   if (iter != m_TextureCache.end()) {
     return iter->second;
   }
 
-  // Load from disk
   int width = 0;
   int height = 0;
   int channels = 0;
@@ -67,7 +65,6 @@ auto AssetManager::LoadTexture(const std::filesystem::path& path,
 
   stbi_image_free(data);
 
-  // Cache and return as shared_ptr
   auto shared_texture = std::shared_ptr<RHITexture>(std::move(texture));
   m_TextureCache[key] = shared_texture;
 
@@ -102,13 +99,11 @@ auto AssetManager::LoadModel(const std::filesystem::path& path,
   auto resolved_path = resolve_asset_path(path);
   auto key = GetCanonicalKey(resolved_path);
 
-  // Check cache
   auto iter = m_ModelCache.find(key);
   if (iter != m_ModelCache.end()) {
     return iter->second;
   }
 
-  // Load using model loader registry
   auto model =
       ModelLoaderRegistry::Instance().Load(resolved_path, *this, options);
   if (!model) {
@@ -118,14 +113,12 @@ auto AssetManager::LoadModel(const std::filesystem::path& path,
 
   model->SetSourcePath(resolved_path.string());
 
-  // Create GPU resources
   model->CreateResources(m_Device,
                          m_MaterialDescriptorSetLayout,
                          m_DefaultSampler.get(),
                          m_DefaultTexture.get(),
                          m_DefaultNormalMap.get());
 
-  // Cache and return as shared_ptr
   auto shared_model = std::shared_ptr<Model>(std::move(model));
   m_ModelCache[key] = shared_model;
 
@@ -185,7 +178,6 @@ void AssetManager::SetMaterialDescriptorSetLayout(
 
 void AssetManager::UnloadUnusedAssets()
 {
-  // Remove textures with only one reference (the cache itself)
   for (auto iter = m_TextureCache.begin(); iter != m_TextureCache.end();) {
     if (iter->second.use_count() == 1) {
       iter = m_TextureCache.erase(iter);
@@ -194,7 +186,6 @@ void AssetManager::UnloadUnusedAssets()
     }
   }
 
-  // Remove models with only one reference
   for (auto iter = m_ModelCache.begin(); iter != m_ModelCache.end();) {
     if (iter->second.use_count() == 1) {
       iter = m_ModelCache.erase(iter);
@@ -237,7 +228,6 @@ auto AssetManager::GetDevice() -> RHIDevice&
 
 void AssetManager::create_default_resources()
 {
-  // Create 1x1 white texture
   {
     TextureDesc desc {};
     desc.Width = 1;
@@ -251,7 +241,6 @@ void AssetManager::create_default_resources()
     m_DefaultTexture->Upload(white.data(), white.size());
   }
 
-  // Create 1x1 flat normal map (pointing up in tangent space: 0.5, 0.5, 1.0)
   {
     TextureDesc desc {};
     desc.Width = 1;
@@ -261,12 +250,10 @@ void AssetManager::create_default_resources()
     desc.MipLevels = 1;
 
     m_DefaultNormalMap = m_Device.CreateTexture(desc);
-    std::array<uint8_t, 4> normal = {
-        128, 128, 255, 255};  // (0.5, 0.5, 1.0) encoded
+    std::array<uint8_t, 4> normal = {128, 128, 255, 255};
     m_DefaultNormalMap->Upload(normal.data(), normal.size());
   }
 
-  // Create default sampler
   {
     SamplerDesc desc {};
     desc.MinFilter = Filter::Linear;
@@ -274,13 +261,12 @@ void AssetManager::create_default_resources()
     desc.MipFilter = Filter::Linear;
     desc.AddressModeU = SamplerAddressMode::Repeat;
     desc.AddressModeV = SamplerAddressMode::Repeat;
-    // TODO: Anisotropy
+
     desc.EnableAnisotropy = false;
     desc.MaxAnisotropy = 16.0F;
 
     m_DefaultSampler = m_Device.CreateSampler(desc);
   }
-
 }
 
 auto AssetManager::resolve_asset_path(const std::filesystem::path& path) const
@@ -295,11 +281,9 @@ auto AssetManager::resolve_asset_path(const std::filesystem::path& path) const
 auto AssetManager::GetCanonicalKey(const std::filesystem::path& path)
     -> std::string
 {
-  // Use canonical path as key to handle symlinks and relative paths
   std::error_code error_code;
   auto canonical = std::filesystem::canonical(path, error_code);
   if (error_code) {
-    // File doesn't exist yet or path is invalid, use as-is
     return path.string();
   }
   return canonical.string();

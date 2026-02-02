@@ -1,3 +1,6 @@
+[__AttributeUsage(_AttributeTargets.Var)]
+struct DynamicAttribute {};
+
 struct VertexInput
 {
     float3 position : POSITION;
@@ -30,6 +33,7 @@ struct NodeData
     float4x4 normalMatrix;
 };
 
+[Dynamic]
 ParameterBlock<NodeData> node;
 
 struct MaterialData

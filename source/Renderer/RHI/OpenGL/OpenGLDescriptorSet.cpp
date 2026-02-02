@@ -67,22 +67,24 @@ void OpenGLDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
                 binding);
 }
 
-void OpenGLDescriptorSet::Bind() const
+static constexpr uint32_t kBindingStride = 16;
+
+void OpenGLDescriptorSet::Bind(uint32_t set_index) const
 {
-  Bind({});
+  Bind(set_index, {});
 }
 
-void OpenGLDescriptorSet::Bind(std::span<const uint32_t> dynamic_offsets) const
+void OpenGLDescriptorSet::Bind(uint32_t set_index,
+                               std::span<const uint32_t> dynamic_offsets) const
 {
   const auto* gl_layout =
       dynamic_cast<const OpenGLDescriptorSetLayout*>(m_Layout.get());
-  const auto& layout_bindings =
-      gl_layout != nullptr ? gl_layout->GetBindings()
-                           : std::vector<DescriptorBinding> {};
+  const auto& layout_bindings = gl_layout != nullptr
+      ? gl_layout->GetBindings()
+      : std::vector<DescriptorBinding> {};
 
   uint32_t dynamic_offset_idx = 0;
 
-  // Bind uniform buffers
   for (const auto& [binding, buffer_binding] : m_BufferBindings) {
     if (buffer_binding.Buffer == nullptr) {
       continue;
@@ -90,7 +92,6 @@ void OpenGLDescriptorSet::Bind(std::span<const uint32_t> dynamic_offsets) const
 
     size_t offset = buffer_binding.Offset;
 
-    // Check if this binding is a dynamic uniform buffer
     bool is_dynamic = false;
     for (const auto& lb : layout_bindings) {
       if (lb.Binding == binding
@@ -106,14 +107,14 @@ void OpenGLDescriptorSet::Bind(std::span<const uint32_t> dynamic_offsets) const
       ++dynamic_offset_idx;
     }
 
+    uint32_t flat_binding = set_index * kBindingStride + binding;
     glBindBufferRange(GL_UNIFORM_BUFFER,
-                      binding,
+                      flat_binding,
                       buffer_binding.Buffer->GetGLBuffer(),
                       static_cast<GLintptr>(offset),
                       static_cast<GLsizeiptr>(buffer_binding.Range));
   }
 
-  // Bind textures and samplers
   for (const auto& [binding, texture_binding] : m_TextureBindings) {
     if (texture_binding.Texture == nullptr
         || texture_binding.Sampler == nullptr)
@@ -121,9 +122,8 @@ void OpenGLDescriptorSet::Bind(std::span<const uint32_t> dynamic_offsets) const
       continue;
     }
 
-    // Bind texture to texture unit (binding point)
-    glBindTextureUnit(binding, texture_binding.Texture->GetGLTexture());
-    // Bind sampler to the same texture unit
-    glBindSampler(binding, texture_binding.Sampler->GetGLSampler());
+    uint32_t flat_binding = set_index * kBindingStride + binding;
+    glBindTextureUnit(flat_binding, texture_binding.Texture->GetGLTexture());
+    glBindSampler(flat_binding, texture_binding.Sampler->GetGLSampler());
   }
 }

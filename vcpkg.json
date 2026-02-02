@@ -1,68 +1,53 @@
 {
-  "name": "lumina",
-  "version-semver": "0.1.0",
-  "dependencies": [
-    {
-      "name": "glad",
-      "version>=": "0.1.36",
-      "features": ["gl-api-46"]
-    },
-    {
-      "name": "sdl3",
-      "version>=": "3.2.28",
-      "features": ["vulkan"],
-      "platform": "windows"
-    },
-    {
-      "name": "sdl3",
-      "version>=": "3.2.28",
-      "features": ["vulkan", "wayland", "x11"],
-      "platform": "linux"
-    },
-    {
-      "name": "spdlog",
-      "version>=": "1.15.0#1"
-    },
-    {
-      "name": "shader-slang",
-      "version>=": "2024.15.2"
-    },
-    {
-      "name": "vulkan-memory-allocator-hpp",
-      "version>=": "3.1.0"
-    },
-    {
-      "name": "volk",
-      "version>=": "1.4.309.0"
-    },
-    {
-      "name": "tomlplusplus",
-      "version>=": "3.4.0"
-    },
-    {
-      "name": "glm",
-      "version>=": "1.0.1"
-    },
-    {
-      "name": "stb",
-      "version>=": "2024-07-29#1"
-    },
-    {
-      "name": "tinyobjloader",
-      "version>=": "2.0.0rc13#0"
-    }
-  ],
-  "default-features": [],
-  "features": {
-    "test": {
-      "description": "Dependencies for testing",
-      "dependencies": [
-        {
-          "name": "catch2",
-          "version>=": "3.7.1"
-        }
-      ]
+  "name" : "lumina",
+  "version-semver" : "0.1.0",
+  "dependencies" : [ {
+    "name" : "sdl3",
+    "version>=" : "3.2.28",
+    "features" : [ "vulkan" ],
+    "platform" : "windows"
+  }, {
+    "name" : "sdl3",
+    "version>=" : "3.2.28",
+    "features" : [ "vulkan", "wayland", "x11" ],
+    "platform" : "linux"
+  }, {
+    "name" : "spdlog",
+    "version>=" : "1.15.0#1"
+  }, {
+    "name" : "shader-slang",
+    "version>=" : "2024.15.2"
+  }, {
+    "name" : "vulkan-memory-allocator-hpp",
+    "version>=" : "3.1.0"
+  }, {
+    "name" : "volk",
+    "version>=" : "1.4.309.0"
+  }, {
+    "name" : "tomlplusplus",
+    "version>=" : "3.4.0"
+  }, {
+    "name" : "glm",
+    "version>=" : "1.0.1"
+  }, {
+    "name" : "stb",
+    "version>=" : "2024-07-29#1"
+  }, {
+    "name" : "tinyobjloader",
+    "version>=" : "2.0.0rc13#0"
+  }, {
+    "name" : "glad",
+    "version>=" : "0.1.36"
+  } ],
+  "default-features" : [ ],
+  "features" : {
+    "test" : {
+      "description" : "Dependencies for testing",
+      "dependencies" : [ {
+        "name" : "catch2",
+        "version>=" : "3.7.1"
+      } ]
     }
   },
-  "builtin-baseline": "594ad8871e1e8e45f8e626c015fd611163430207"
+  "builtin-baseline" : "594ad8871e1e8e45f8e626c015fd611163430207"
 }

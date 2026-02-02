@@ -99,12 +99,10 @@ void OpenGLCommandBuffer::BindShaders(const RHIShaderModule* vertex_shader,
     throw std::runtime_error("Both vertex and fragment shaders are required");
   }
 
-  // Delete old program if exists
   if (m_CurrentProgram != 0) {
     glDeleteProgram(m_CurrentProgram);
   }
 
-  // Create and link program
   m_CurrentProgram = glCreateProgram();
   glAttachShader(m_CurrentProgram, gl_vertex->GetGLShader());
   glAttachShader(m_CurrentProgram, gl_fragment->GetGLShader());
@@ -140,9 +138,6 @@ void OpenGLCommandBuffer::BindVertexBuffer(const RHIBuffer& buffer,
   glBindVertexArray(m_VAO);
   glBindBuffer(GL_ARRAY_BUFFER, gl_buffer.GetGLBuffer());
 
-  // Apply vertex attributes now that a buffer is bound.
-  // glVertexAttribPointer captures the current GL_ARRAY_BUFFER, so this
-  // must happen after the buffer bind.
   if (m_HasPendingLayout) {
     applyVertexLayout();
   }
@@ -222,16 +217,14 @@ void OpenGLCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
 }
 
 void OpenGLCommandBuffer::BindDescriptorSet(
-    [[maybe_unused]] uint32_t set_index,
+    uint32_t set_index,
     const RHIDescriptorSet& descriptor_set,
     [[maybe_unused]] const RHIPipelineLayout& layout,
     std::span<const uint32_t> dynamic_offsets)
 {
-  // For OpenGL, we directly bind the UBOs to their binding points
-  // The set_index is ignored since OpenGL has a flat binding namespace
   const auto& gl_descriptor_set =
       dynamic_cast<const OpenGLDescriptorSet&>(descriptor_set);
-  gl_descriptor_set.Bind(dynamic_offsets);
+  gl_descriptor_set.Bind(set_index, dynamic_offsets);
 }
 
 void OpenGLCommandBuffer::Draw(uint32_t vertex_count,
@@ -258,7 +251,6 @@ void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
                                       int32_t /*vertex_offset*/,
                                       uint32_t first_instance)
 {
-  // Calculate byte offset for first_index
   const auto* indices = reinterpret_cast<const void*>(
       static_cast<uintptr_t>(first_index) * sizeof(uint32_t));
 
@@ -276,4 +268,3 @@ void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
                                         first_instance);
   }
 }
-

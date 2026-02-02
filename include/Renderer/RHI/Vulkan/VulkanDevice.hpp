@@ -56,7 +56,8 @@ public:
   [[nodiscard]] auto CreateDescriptorSet(
       const std::shared_ptr<RHIDescriptorSetLayout>& layout)
       -> std::unique_ptr<RHIDescriptorSet> override;
-  [[nodiscard]] auto CreatePipelineLayout(const PipelineLayoutDesc& desc)
+  [[nodiscard]] auto CreatePipelineLayout(
+      const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts)
       -> std::shared_ptr<RHIPipelineLayout> override;
 
   [[nodiscard]] auto GetVkInstance() const -> VkInstance { return m_Instance; }

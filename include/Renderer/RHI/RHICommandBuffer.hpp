@@ -29,10 +29,11 @@ public:
   virtual void BindIndexBuffer(const RHIBuffer& buffer) = 0;
   virtual void SetVertexInput(const VertexInputLayout& layout) = 0;
   virtual void SetPrimitiveTopology(PrimitiveTopology topology) = 0;
-  virtual void BindDescriptorSet(uint32_t set_index,
-                                 const RHIDescriptorSet& descriptor_set,
-                                 const RHIPipelineLayout& layout,
-                                 std::span<const uint32_t> dynamic_offsets = {}) = 0;
+  virtual void BindDescriptorSet(
+      uint32_t set_index,
+      const RHIDescriptorSet& descriptor_set,
+      const RHIPipelineLayout& layout,
+      std::span<const uint32_t> dynamic_offsets = {}) = 0;
   virtual void Draw(uint32_t vertex_count,
                     uint32_t instance_count,
                     uint32_t first_vertex,

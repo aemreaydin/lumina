@@ -15,7 +15,7 @@ class Material;
 
 struct TextureLoadOptions
 {
-  bool GenerateMipmaps {false};  // Not yet supported
+  bool GenerateMipmaps {false};
   bool SRGB {true};
   bool FlipY {false};
 };
@@ -24,7 +24,7 @@ struct ModelLoadOptions
 {
   bool CalculateNormals {true};
   bool CalculateTangents {true};
-  bool FlipUVs {true};  // OBJ typically needs UV flip
+  bool FlipUVs {true};
   float Scale {1.0F};
 };
 
@@ -33,13 +33,11 @@ class AssetManager
 public:
   explicit AssetManager(RHIDevice& device);
   ~AssetManager();
-
   AssetManager(const AssetManager&) = delete;
   AssetManager(AssetManager&&) = delete;
   auto operator=(const AssetManager&) -> AssetManager& = delete;
   auto operator=(AssetManager&&) -> AssetManager& = delete;
 
-  // Texture loading and caching
   [[nodiscard]] auto LoadTexture(const std::filesystem::path& path,
                                  const TextureLoadOptions& options = {})
       -> std::shared_ptr<RHITexture>;
@@ -50,7 +48,6 @@ public:
   [[nodiscard]] auto HasTexture(const std::filesystem::path& path) const
       -> bool;
 
-  // Model loading and caching
   [[nodiscard]] auto LoadModel(const std::filesystem::path& path,
                                const ModelLoadOptions& options = {})
       -> std::shared_ptr<Model>;
@@ -60,7 +57,6 @@ public:
 
   [[nodiscard]] auto HasModel(const std::filesystem::path& path) const -> bool;
 
-  // Default resources
   [[nodiscard]] auto GetDefaultTexture() const -> RHITexture*;
   [[nodiscard]] auto GetDefaultNormalMap() const -> RHITexture*;
   [[nodiscard]] auto GetDefaultSampler() const -> RHISampler*;
@@ -69,19 +65,15 @@ public:
   void SetMaterialDescriptorSetLayout(
       std::shared_ptr<RHIDescriptorSetLayout> layout);
 
-  // Resource management
   void UnloadUnusedAssets();
   void UnloadAll();
 
-  // Statistics
   [[nodiscard]] auto GetLoadedTextureCount() const -> size_t;
   [[nodiscard]] auto GetLoadedModelCount() const -> size_t;
 
-  // Set base asset path
   void SetAssetBasePath(const std::filesystem::path& path);
   [[nodiscard]] auto GetAssetBasePath() const -> const std::filesystem::path&;
 
-  // Access to device
   [[nodiscard]] auto GetDevice() -> RHIDevice&;
 
 private:
@@ -94,11 +86,9 @@ private:
   RHIDevice& m_Device;
   std::filesystem::path m_AssetBasePath {"assets"};
 
-  // Caches using canonical paths as keys
   std::unordered_map<std::string, std::shared_ptr<RHITexture>> m_TextureCache;
   std::unordered_map<std::string, std::shared_ptr<Model>> m_ModelCache;
 
-  // Default resources
   std::unique_ptr<RHITexture> m_DefaultTexture;
   std::unique_ptr<RHITexture> m_DefaultNormalMap;
   std::unique_ptr<RHISampler> m_DefaultSampler;

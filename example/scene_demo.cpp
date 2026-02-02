@@ -33,7 +33,6 @@ protected:
 
     m_SceneRenderer = std::make_unique<SceneRenderer>(GetDevice());
 
-    // Pass the reflected material layout from shader to AssetManager
     m_AssetManager->SetMaterialDescriptorSetLayout(
         m_SceneRenderer->GetSetLayout("material"));
 
@@ -118,7 +117,6 @@ protected:
             glm::vec3(0.0F, 45.0F * delta_time, 0.0F));
       }
     }
-
 
     // Viewport picking on left click
     if (Input::IsMouseButtonPressed(MouseButton::Left)) {

@@ -31,11 +31,12 @@ static auto MapBindingType(slang::BindingType type) -> ShaderParameterType
 
 static void ReflectParameterBlock(
     slang::VariableLayoutReflection* param,
+    bool is_dynamic,
     std::map<uint32_t, ShaderDescriptorSetInfo>& set_map)
 {
   auto* type_layout = param->getTypeLayout();
   auto set = static_cast<uint32_t>(
-      param->getOffset(slang::ParameterCategory::RegisterSpace));
+      param->getOffset(slang::ParameterCategory::SubElementRegisterSpace));
 
   auto& set_info = set_map[set];
   set_info.SetIndex = set;
@@ -45,24 +46,36 @@ static void ReflectParameterBlock(
     return;
   }
 
-  // The ParameterBlock's element type describes the contents of the set.
-  // Walk its binding ranges to find all bindings (UBOs, textures, etc.)
+  auto data_size = element_type->getSize();
+  if (data_size > 0) {
+    ShaderParameterInfo info;
+    info.Name = param->getName();
+    info.Type = is_dynamic ? ShaderParameterType::DynamicUniformBuffer
+                           : ShaderParameterType::UniformBuffer;
+    info.Set = set;
+    info.Binding = 0;
+    info.Size = static_cast<uint32_t>(data_size);
+    info.Count = 1;
+    info.Stages = ShaderStage::Vertex | ShaderStage::Fragment;
+    set_info.Parameters.push_back(info);
+  }
+
   auto range_count = element_type->getBindingRangeCount();
   for (SlangInt r = 0; r < range_count; r++) {
     auto binding_type = element_type->getBindingRangeType(r);
     auto binding_count = element_type->getBindingRangeBindingCount(r);
 
-    // Skip parameter block and inline uniform (handled separately)
-    if (binding_type == slang::BindingType::ParameterBlock) {
+    if (binding_type == slang::BindingType::ParameterBlock
+        || binding_type == slang::BindingType::ConstantBuffer
+        || binding_type == slang::BindingType::InlineUniformData)
+    {
       continue;
     }
 
-    // Get the field name for this binding range
     auto* leaf_var = element_type->getBindingRangeLeafVariable(r);
     std::string range_name =
         leaf_var != nullptr ? leaf_var->getName() : "unknown";
 
-    // Get descriptor set index and range index for binding offset
     auto desc_set_idx = element_type->getBindingRangeDescriptorSetIndex(r);
     auto first_range_idx =
         element_type->getBindingRangeFirstDescriptorRangeIndex(r);
@@ -77,21 +90,13 @@ static void ReflectParameterBlock(
     info.Binding = static_cast<uint32_t>(binding_offset);
     info.Count = static_cast<uint32_t>(binding_count);
     info.Stages = ShaderStage::Vertex | ShaderStage::Fragment;
-
-    // For constant buffers / inline uniform, compute size
-    if (binding_type == slang::BindingType::ConstantBuffer
-        || binding_type == slang::BindingType::InlineUniformData)
-    {
-      info.Size = static_cast<uint32_t>(element_type->getSize());
-      info.Name = param->getName();
-    }
-
     set_info.Parameters.push_back(info);
   }
 }
 
 static auto ExtractReflection(slang::ProgramLayout* layout,
-                               const std::string& source_path)
+                              slang::IGlobalSession* global_session,
+                              const std::string& source_path)
     -> ShaderReflectionData
 {
   ShaderReflectionData result;
@@ -107,8 +112,13 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
     auto category = param->getCategory();
     const char* name = param->getName();
 
+    auto* variable = param->getVariable();
+    bool is_dynamic =
+        variable->findUserAttributeByName(
+            reinterpret_cast<SlangSession*>(global_session), "Dynamic")
+        != nullptr;
+
     if (category == slang::ParameterCategory::PushConstantBuffer) {
-      // Treat push constants as regular constant buffers
       auto set = static_cast<uint32_t>(param->getBindingSpace());
       auto binding = static_cast<uint32_t>(param->getBindingIndex());
       auto* element_type = type_layout->getElementTypeLayout();
@@ -120,7 +130,8 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
 
       ShaderParameterInfo info;
       info.Name = name;
-      info.Type = ShaderParameterType::UniformBuffer;
+      info.Type = is_dynamic ? ShaderParameterType::DynamicUniformBuffer
+                             : ShaderParameterType::UniformBuffer;
       info.Set = set;
       info.Binding = binding;
       info.Size = static_cast<uint32_t>(size);
@@ -138,8 +149,10 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
     }
 
     if (kind == slang::TypeReflection::Kind::ParameterBlock) {
-      Logger::Info("  Reflection: ParameterBlock '{}'", name);
-      ReflectParameterBlock(param, set_map);
+      Logger::Info("  Reflection: ParameterBlock '{}'{}",
+                   name,
+                   is_dynamic ? " [Dynamic]" : "");
+      ReflectParameterBlock(param, is_dynamic, set_map);
       continue;
     }
 
@@ -155,7 +168,8 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
 
       ShaderParameterInfo info;
       info.Name = name;
-      info.Type = ShaderParameterType::UniformBuffer;
+      info.Type = is_dynamic ? ShaderParameterType::DynamicUniformBuffer
+                             : ShaderParameterType::UniformBuffer;
       info.Set = set;
       info.Binding = binding;
       info.Size = static_cast<uint32_t>(size);
@@ -163,12 +177,12 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
       info.Stages = ShaderStage::Vertex | ShaderStage::Fragment;
       set_info.Parameters.push_back(info);
 
-      Logger::Info("  Reflection: ConstantBuffer '{}' set={} binding={} "
-                   "size={}",
-                   name,
-                   set,
-                   binding,
-                   size);
+      Logger::Info(
+          "  Reflection: ConstantBuffer '{}' set={} binding={} " "size={}",
+          name,
+          set,
+          binding,
+          size);
       continue;
     }
 
@@ -178,7 +192,6 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
       auto set = static_cast<uint32_t>(param->getBindingSpace());
       auto binding = static_cast<uint32_t>(param->getBindingIndex());
 
-      // Determine type from binding range
       auto param_type = ShaderParameterType::CombinedImageSampler;
       if (type_layout->getBindingRangeCount() > 0) {
         param_type = MapBindingType(type_layout->getBindingRangeType(0));
@@ -197,8 +210,8 @@ static auto ExtractReflection(slang::ProgramLayout* layout,
       info.Stages = ShaderStage::Fragment;
       set_info.Parameters.push_back(info);
 
-      Logger::Info("  Reflection: Resource '{}' set={} binding={}", name, set,
-                   binding);
+      Logger::Info(
+          "  Reflection: Resource '{}' set={} binding={}", name, set, binding);
       continue;
     }
 
@@ -224,6 +237,7 @@ struct StageCompileResult
 };
 
 static auto CompileStage(slang::ISession* session,
+                         slang::IGlobalSession* global_session,
                          slang::IModule* module,
                          const char* entry_point_name,
                          const std::string& source_path)
@@ -261,9 +275,9 @@ static auto CompileStage(slang::ISession* session,
 
   slang::ProgramLayout* program_layout = program->getLayout(0);
 
-  Logger::Info("Extracting reflection for entry point '{}'",
-               entry_point_name);
-  auto reflection = ExtractReflection(program_layout, source_path);
+  Logger::Info("Extracting reflection for entry point '{}'", entry_point_name);
+  auto reflection =
+      ExtractReflection(program_layout, global_session, source_path);
 
   ComPtr<slang::IBlob> spirv_blob;
   linked_program->getEntryPointCode(
@@ -299,7 +313,6 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
       .profile = global_session->findProfile("glsl_460"),
       .forceGLSLScalarBufferLayout = true};
 
-  // Preserve entry point names in SPIR-V output
   slang::CompilerOptionEntry option {};
   option.name = slang::CompilerOptionName::VulkanUseEntryPointName;
   option.value.kind = slang::CompilerOptionValueKind::Int;
@@ -328,7 +341,7 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
   bool reflection_extracted = false;
 
   const auto vertex_res =
-      CompileStage(session, module, "vertexMain", shader_path);
+      CompileStage(session, global_session, module, "vertexMain", shader_path);
   if (vertex_res.has_value()) {
     result.Sources.emplace(ShaderType::Vertex, vertex_res->SPIRV);
     if (!reflection_extracted) {
@@ -337,8 +350,8 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
     }
   }
 
-  const auto fragment_res =
-      CompileStage(session, module, "fragmentMain", shader_path);
+  const auto fragment_res = CompileStage(
+      session, global_session, module, "fragmentMain", shader_path);
   if (fragment_res.has_value()) {
     result.Sources.emplace(ShaderType::Fragment, fragment_res->SPIRV);
     if (!reflection_extracted) {
@@ -348,7 +361,7 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
   }
 
   const auto compute_res =
-      CompileStage(session, module, "computeMain", shader_path);
+      CompileStage(session, global_session, module, "computeMain", shader_path);
   if (compute_res.has_value()) {
     result.Sources.emplace(ShaderType::Compute, compute_res->SPIRV);
     if (!reflection_extracted) {

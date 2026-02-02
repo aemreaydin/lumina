@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 struct RendererConfig;
 class RHISwapchain;
@@ -21,7 +22,6 @@ struct SamplerDesc;
 struct ShaderModuleDesc;
 struct GraphicsPipelineDesc;
 struct DescriptorSetLayoutDesc;
-struct PipelineLayoutDesc;
 
 class RHIDevice
 {
@@ -62,7 +62,8 @@ public:
       const std::shared_ptr<RHIDescriptorSetLayout>& layout)
       -> std::unique_ptr<RHIDescriptorSet> = 0;
   [[nodiscard]] virtual auto CreatePipelineLayout(
-      const PipelineLayoutDesc& desc) -> std::shared_ptr<RHIPipelineLayout> = 0;
+      const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts)
+      -> std::shared_ptr<RHIPipelineLayout> = 0;
 
   RHIDevice(const RHIDevice&) = delete;
   RHIDevice(RHIDevice&&) = delete;

@@ -35,10 +35,11 @@ public:
   void BindIndexBuffer(const RHIBuffer& buffer) override;
   void SetVertexInput(const VertexInputLayout& layout) override;
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
-  void BindDescriptorSet(uint32_t set_index,
-                         const RHIDescriptorSet& descriptor_set,
-                         const RHIPipelineLayout& layout,
-                         std::span<const uint32_t> dynamic_offsets = {}) override;
+  void BindDescriptorSet(
+      uint32_t set_index,
+      const RHIDescriptorSet& descriptor_set,
+      const RHIPipelineLayout& layout,
+      std::span<const uint32_t> dynamic_offsets = {}) override;
   void Draw(uint32_t vertex_count,
             uint32_t instance_count,
             uint32_t first_vertex,

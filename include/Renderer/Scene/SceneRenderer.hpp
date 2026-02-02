@@ -7,7 +7,7 @@
 
 #include "Renderer/RHI/RHIPipeline.hpp"
 #include "Renderer/ShaderCompiler.hpp"
-#include "Renderer/ShaderParameterPolicy.hpp"
+#include "Renderer/ShaderReflection.hpp"
 
 class Scene;
 class SceneNode;
@@ -25,13 +25,13 @@ struct CameraUBO
   glm::mat4 View;
   glm::mat4 Projection;
   glm::mat4 ViewProjection;
-  glm::vec4 CameraPosition;  // w unused
+  glm::vec4 CameraPosition;
 };
 
 struct NodeUBO
 {
   glm::mat4 Model;
-  glm::mat4 NormalMatrix;  // Stored as mat4 for alignment, use mat3 portion
+  glm::mat4 NormalMatrix;
 };
 
 class SceneRenderer
@@ -45,16 +45,10 @@ public:
   auto operator=(const SceneRenderer&) -> SceneRenderer& = delete;
   auto operator=(SceneRenderer&&) -> SceneRenderer& = delete;
 
-  // Call once before rendering to set up for current frame
   void BeginFrame(const Camera& camera);
-
-  // Render a scene
   void RenderScene(RHICommandBuffer& cmd, const Scene& scene);
-
-  // Render a single node (useful for custom rendering)
   void RenderNode(RHICommandBuffer& cmd, const SceneNode& node);
 
-  // Get reflected layouts for external use (looked up by parameter name)
   [[nodiscard]] auto GetSetLayout(const std::string& parameter_name) const
       -> std::shared_ptr<RHIDescriptorSetLayout>;
   [[nodiscard]] auto GetPipelineLayout() const
@@ -69,22 +63,17 @@ private:
 
   RHIDevice& m_Device;
 
-  // Compiled shaders and reflection data
   ShaderCompileResult m_CompileResult;
   ReflectedPipelineLayout m_ReflectedLayout;
 
-  // Shaders
   std::unique_ptr<RHIShaderModule> m_VertexShader;
   std::unique_ptr<RHIShaderModule> m_FragmentShader;
 
-  // Pipeline layout
   std::shared_ptr<RHIPipelineLayout> m_PipelineLayout;
 
-  // Per-frame camera resources
   std::unique_ptr<RHIBuffer> m_CameraUBO;
   std::unique_ptr<RHIDescriptorSet> m_CameraDescriptorSet;
 
-  // Dynamic UBO for per-draw node transforms
   std::unique_ptr<RHIBuffer> m_NodeDynamicBuffer;
   std::unique_ptr<RHIDescriptorSet> m_NodeDescriptorSet;
   uint32_t m_NodeSetIndex {0};

@@ -30,7 +30,6 @@ add_library(
         source/Renderer/CameraController.cpp
         source/Renderer/ShaderCompiler.cpp
         source/Renderer/ShaderReflection.cpp
-        source/Renderer/ShaderParameterPolicy.cpp
         # Model
         source/Renderer/Model/Vertex.cpp
         source/Renderer/Model/Material.cpp

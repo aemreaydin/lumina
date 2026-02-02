@@ -10,14 +10,14 @@
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
-VulkanPipelineLayout::VulkanPipelineLayout(const VulkanDevice& device,
-                                           const PipelineLayoutDesc& desc)
+VulkanPipelineLayout::VulkanPipelineLayout(
+    const VulkanDevice& device,
+    const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts)
     : m_Device(device)
-    , m_SetLayouts(desc.SetLayouts)
+    , m_SetLayouts(set_layouts)
 {
-  std::vector<VkDescriptorSetLayout> vk_set_layouts(desc.SetLayouts.size());
-  for (const auto& [index, layout] :
-       std::ranges::views::enumerate(desc.SetLayouts))
+  std::vector<VkDescriptorSetLayout> vk_set_layouts(set_layouts.size());
+  for (const auto& [index, layout] : std::ranges::views::enumerate(set_layouts))
   {
     const auto* vk_layout =
         dynamic_cast<const VulkanDescriptorSetLayout*>(layout.get());
@@ -44,7 +44,7 @@ VulkanPipelineLayout::VulkanPipelineLayout(const VulkanDevice& device,
   }
 
   Logger::Trace("[Vulkan] Created pipeline layout with {} set layouts",
-                desc.SetLayouts.size());
+                set_layouts.size());
 }
 
 VulkanPipelineLayout::~VulkanPipelineLayout()

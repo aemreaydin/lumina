@@ -52,8 +52,9 @@ public:
                                  RHITexture* texture,
                                  RHISampler* sampler) override;
 
-  void Bind() const;
-  void Bind(std::span<const uint32_t> dynamic_offsets) const;
+  void Bind(uint32_t set_index) const;
+  void Bind(uint32_t set_index,
+            std::span<const uint32_t> dynamic_offsets) const;
 
 private:
   std::shared_ptr<RHIDescriptorSetLayout> m_Layout;

@@ -725,8 +725,9 @@ auto VulkanDevice::CreateDescriptorSet(
   return std::make_unique<VulkanDescriptorSet>(*this, m_DescriptorPool, layout);
 }
 
-auto VulkanDevice::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+auto VulkanDevice::CreatePipelineLayout(
+    const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts)
     -> std::shared_ptr<RHIPipelineLayout>
 {
-  return std::make_shared<VulkanPipelineLayout>(*this, desc);
+  return std::make_shared<VulkanPipelineLayout>(*this, set_layouts);
 }

@@ -218,8 +218,9 @@ auto OpenGLDevice::CreateDescriptorSet(
   return std::make_unique<OpenGLDescriptorSet>(layout);
 }
 
-auto OpenGLDevice::CreatePipelineLayout(const PipelineLayoutDesc& desc)
+auto OpenGLDevice::CreatePipelineLayout(
+    const std::vector<std::shared_ptr<RHIDescriptorSetLayout>>& set_layouts)
     -> std::shared_ptr<RHIPipelineLayout>
 {
-  return std::make_shared<OpenGLPipelineLayout>(desc);
+  return std::make_shared<OpenGLPipelineLayout>(set_layouts);
 }

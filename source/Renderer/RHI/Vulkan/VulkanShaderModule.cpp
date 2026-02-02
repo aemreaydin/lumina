@@ -8,9 +8,6 @@
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
 
-// Uses VK_EXT_shader_object for direct shader binding
-// TODO: Add fallback to VkShaderModule + VkPipeline for devices without
-// extension
 VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
                                        const ShaderModuleDesc& desc)
     : m_Device(device)
@@ -21,7 +18,6 @@ VulkanShaderModule::VulkanShaderModule(const VulkanDevice& device,
     throw std::runtime_error("Shader SPIR-V code is empty");
   }
 
-  // Extract VkDescriptorSetLayout handles from RHI layouts
   std::vector<VkDescriptorSetLayout> vk_set_layouts;
   vk_set_layouts.reserve(desc.SetLayouts.size());
   for (const auto& layout : desc.SetLayouts) {

@@ -485,4 +485,3 @@ void VulkanCommandBuffer::DrawIndexed(uint32_t index_count,
                    vertex_offset,
                    first_instance);
 }
-

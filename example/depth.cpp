@@ -130,9 +130,8 @@ protected:
     };
     m_DescriptorSetLayout = GetDevice().CreateDescriptorSetLayout(layout_desc);
 
-    PipelineLayoutDesc pipeline_layout_desc {};
-    pipeline_layout_desc.SetLayouts = {m_DescriptorSetLayout};
-    m_PipelineLayout = GetDevice().CreatePipelineLayout(pipeline_layout_desc);
+    m_PipelineLayout =
+        GetDevice().CreatePipelineLayout({m_DescriptorSetLayout});
 
     const auto shader_sources = ShaderCompiler::Compile("shaders/depth.slang");
 
@@ -144,7 +143,8 @@ protected:
     vertex_desc.SetLayouts = {m_DescriptorSetLayout};
     m_VertexShader = GetDevice().CreateShaderModule(vertex_desc);
 
-    const auto& fragment_spirv = shader_sources.Sources.at(ShaderType::Fragment);
+    const auto& fragment_spirv =
+        shader_sources.Sources.at(ShaderType::Fragment);
     ShaderModuleDesc fragment_desc {};
     fragment_desc.Stage = ShaderStage::Fragment;
     fragment_desc.SPIRVCode = fragment_spirv;
