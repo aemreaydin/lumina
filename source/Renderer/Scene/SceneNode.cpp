@@ -116,22 +116,22 @@ auto SceneNode::GetTransform() const -> const Transform&
   return m_Transform;
 }
 
-void SceneNode::SetPosition(const glm::vec3& position)
+void SceneNode::SetPosition(const linalg::Vec3& position)
 {
   m_Transform.SetPosition(position);
 }
 
-void SceneNode::SetRotation(const glm::quat& rotation)
+void SceneNode::SetRotation(const linalg::Quat& rotation)
 {
   m_Transform.SetRotation(rotation);
 }
 
-void SceneNode::SetRotationEuler(const glm::vec3& euler_degrees)
+void SceneNode::SetRotationEuler(const linalg::Vec3& euler_degrees)
 {
   m_Transform.SetRotationEuler(euler_degrees);
 }
 
-void SceneNode::SetScale(const glm::vec3& scale)
+void SceneNode::SetScale(const linalg::Vec3& scale)
 {
   m_Transform.SetScale(scale);
 }
@@ -141,14 +141,15 @@ void SceneNode::SetScale(float uniform_scale)
   m_Transform.SetScale(uniform_scale);
 }
 
-auto SceneNode::GetPosition() const -> const glm::vec3&
+auto SceneNode::GetPosition() const -> const linalg::Vec3&
 {
   return m_Transform.GetPosition();
 }
 
-auto SceneNode::GetWorldPosition() const -> glm::vec3
+auto SceneNode::GetWorldPosition() const -> linalg::Vec3
 {
-  return m_Transform.GetWorldMatrix()[3];
+  const auto& world = m_Transform.GetWorldMatrix();
+  return linalg::Vec3{world(0, 3), world(1, 3), world(2, 3)};
 }
 
 void SceneNode::SetModel(std::shared_ptr<Model> model)

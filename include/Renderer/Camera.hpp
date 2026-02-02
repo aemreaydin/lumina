@@ -3,9 +3,8 @@
 
 #include <cstdint>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
+#include <linalg/mat4.hpp>
 
 #include "Renderer/Model/BoundingVolume.hpp"
 
@@ -20,9 +19,9 @@ class Camera
 public:
   Camera();
 
-  void SetPosition(const glm::vec3& position);
+  void SetPosition(const linalg::Vec3& position);
   void SetRotation(float pitch, float yaw);
-  void SetTarget(const glm::vec3& target);
+  void SetTarget(const linalg::Vec3& target);
 
   void SetPerspective(float fov_y,
                       float aspect_ratio,
@@ -36,10 +35,10 @@ public:
                        float far_plane);
   void SetAspectRatio(float aspect_ratio);
 
-  [[nodiscard]] auto GetPosition() const -> const glm::vec3&;
-  [[nodiscard]] auto GetForward() const -> const glm::vec3&;
-  [[nodiscard]] auto GetRight() const -> const glm::vec3&;
-  [[nodiscard]] auto GetUp() const -> const glm::vec3&;
+  [[nodiscard]] auto GetPosition() const -> const linalg::Vec3&;
+  [[nodiscard]] auto GetForward() const -> const linalg::Vec3&;
+  [[nodiscard]] auto GetRight() const -> const linalg::Vec3&;
+  [[nodiscard]] auto GetUp() const -> const linalg::Vec3&;
   [[nodiscard]] auto GetPitch() const -> float;
   [[nodiscard]] auto GetYaw() const -> float;
 
@@ -49,17 +48,17 @@ public:
 
   [[nodiscard]] auto GetFarPlane() const -> float { return m_FarPlane; }
 
-  [[nodiscard]] auto GetViewMatrix() const -> const glm::mat4&;
-  [[nodiscard]] auto GetProjectionMatrix() const -> const glm::mat4&;
-  [[nodiscard]] auto GetViewProjectionMatrix() const -> glm::mat4;
+  [[nodiscard]] auto GetViewMatrix() const -> const linalg::Mat4&;
+  [[nodiscard]] auto GetProjectionMatrix() const -> const linalg::Mat4&;
+  [[nodiscard]] auto GetViewProjectionMatrix() const -> linalg::Mat4;
 
   [[nodiscard]] auto ScreenPointToRay(float screen_x,
                                       float screen_y,
                                       float viewport_w,
                                       float viewport_h) const -> Ray;
 
-  void Move(const glm::vec3& offset);
-  void MoveRelative(const glm::vec3& offset);
+  void Move(const linalg::Vec3& offset);
+  void MoveRelative(const linalg::Vec3& offset);
   void Rotate(float delta_pitch, float delta_yaw);
 
 private:
@@ -67,15 +66,15 @@ private:
   void recalculate_projection_matrix();
   void update_direction_vectors();
 
-  glm::vec3 m_Position {0.0F, 0.0F, 5.0F};
+  linalg::Vec3 m_Position {0.0F, 0.0F, 5.0F};
   float m_Pitch {0.0F};
   float m_Yaw {0.0F};
 
-  glm::vec3 m_Forward {0.0F, 1.0F, 0.0F};
-  glm::vec3 m_Right {1.0F, 0.0F, 0.0F};
-  glm::vec3 m_Up {0.0F, 0.0F, 1.0F};
+  linalg::Vec3 m_Forward {0.0F, 1.0F, 0.0F};
+  linalg::Vec3 m_Right {1.0F, 0.0F, 0.0F};
+  linalg::Vec3 m_Up {0.0F, 0.0F, 1.0F};
 
-  static constexpr glm::vec3 WORLD_UP {0.0F, 0.0F, 1.0F};
+  static constexpr linalg::Vec3 WORLD_UP {0.0F, 0.0F, 1.0F};
 
   ProjectionType m_ProjectionType {ProjectionType::Perspective};
   float m_FOV {45.0F};
@@ -88,8 +87,8 @@ private:
   float m_OrthoBottom {-10.0F};
   float m_OrthoTop {10.0F};
 
-  glm::mat4 m_ViewMatrix {1.0F};
-  glm::mat4 m_ProjectionMatrix {1.0F};
+  linalg::Mat4 m_ViewMatrix {linalg::Mat4::identity()};
+  linalg::Mat4 m_ProjectionMatrix {linalg::Mat4::identity()};
 };
 
 #endif

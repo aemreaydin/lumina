@@ -58,7 +58,7 @@ void Material::SetOcclusionTexture(std::shared_ptr<RHITexture> texture)
   m_Dirty = true;
 }
 
-void Material::SetBaseColorFactor(const glm::vec4& color)
+void Material::SetBaseColorFactor(const linalg::Vec4& color)
 {
   m_Properties.BaseColorFactor = color;
   m_Dirty = true;
@@ -76,7 +76,7 @@ void Material::SetRoughnessFactor(float roughness)
   m_Dirty = true;
 }
 
-void Material::SetEmissiveFactor(const glm::vec3& emissive)
+void Material::SetEmissiveFactor(const linalg::Vec3& emissive)
 {
   m_Properties.EmissiveFactor = emissive;
   m_Dirty = true;

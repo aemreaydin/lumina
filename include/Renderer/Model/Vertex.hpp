@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
 
 #include "Renderer/RHI/RHIVertexLayout.hpp"
 
@@ -47,10 +47,10 @@ constexpr auto operator~(VertexAttributeFlags flags) -> VertexAttributeFlags
 // Primary vertex format with tangents for normal mapping
 struct Vertex
 {
-  glm::vec3 Position {0.0F, 0.0F, 0.0F};
-  glm::vec3 Normal {0.0F, 0.0F, 1.0F};
-  glm::vec2 TexCoord {0.0F, 0.0F};
-  glm::vec4 Tangent {1.0F, 0.0F, 0.0F, 1.0F};  // w = handedness (+1 or -1)
+  linalg::Vec3 Position {0.0F, 0.0F, 0.0F};
+  linalg::Vec3 Normal {0.0F, 0.0F, 1.0F};
+  linalg::Vec2 TexCoord {0.0F, 0.0F};
+  linalg::Vec4 Tangent {1.0F, 0.0F, 0.0F, 1.0F};  // w = handedness (+1 or -1)
 
   static constexpr VertexAttributeFlags FLAGS = VertexAttributeFlags::Position
       | VertexAttributeFlags::Normal | VertexAttributeFlags::TexCoord

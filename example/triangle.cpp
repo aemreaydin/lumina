@@ -1,7 +1,7 @@
 #include <cstddef>
 #include <memory>
 
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
 
 #include "Core/Application.hpp"
 #include "Core/Logger.hpp"
@@ -16,8 +16,8 @@
 
 struct Vertex
 {
-  glm::vec3 Position;
-  glm::vec3 Color;
+  linalg::Vec3 Position;
+  linalg::Vec3 Color;
 };
 
 class TriangleApp : public Application

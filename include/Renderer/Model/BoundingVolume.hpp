@@ -6,87 +6,88 @@
 #include <limits>
 #include <span>
 
-#include <glm/fwd.hpp>
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
+#include <linalg/mat4.hpp>
+#include <linalg/utility.hpp>
 
 struct Ray
 {
-  glm::vec3 Origin {0.0F};
-  glm::vec3 Direction {0.0F, 1.0F, 0.0F};
+  linalg::Vec3 Origin {0.0F, 0.0F, 0.0F};
+  linalg::Vec3 Direction {0.0F, 1.0F, 0.0F};
 };
 
 // Axis-Aligned Bounding Box
 struct AABB
 {
-  glm::vec3 Min {std::numeric_limits<float>::max()};
-  glm::vec3 Max {std::numeric_limits<float>::lowest()};
+  linalg::Vec3 Min {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+  linalg::Vec3 Max {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
 
-  [[nodiscard]] auto GetCenter() const -> glm::vec3
+  [[nodiscard]] auto GetCenter() const -> linalg::Vec3
   {
     return (Min + Max) * 0.5F;
   }
 
-  [[nodiscard]] auto GetExtents() const -> glm::vec3
+  [[nodiscard]] auto GetExtents() const -> linalg::Vec3
   {
     return (Max - Min) * 0.5F;
   }
 
-  [[nodiscard]] auto GetSize() const -> glm::vec3 { return Max - Min; }
+  [[nodiscard]] auto GetSize() const -> linalg::Vec3 { return Max - Min; }
 
-  void Expand(const glm::vec3& point)
+  void Expand(const linalg::Vec3& point)
   {
-    Min = glm::min(Min, point);
-    Max = glm::max(Max, point);
+    Min = linalg::min(Min, point);
+    Max = linalg::max(Max, point);
   }
 
   void Expand(const AABB& other)
   {
     if (other.IsValid()) {
-      Min = glm::min(Min, other.Min);
-      Max = glm::max(Max, other.Max);
+      Min = linalg::min(Min, other.Min);
+      Max = linalg::max(Max, other.Max);
     }
   }
 
   [[nodiscard]] auto IsValid() const -> bool
   {
-    return Max.x >= Min.x && Max.y >= Min.y && Max.z >= Min.z;
+    return Max.x() >= Min.x() && Max.y() >= Min.y() && Max.z() >= Min.z();
   }
 
   void Reset()
   {
-    Min = glm::vec3(std::numeric_limits<float>::max());
-    Max = glm::vec3(std::numeric_limits<float>::lowest());
+    Min = linalg::Vec3{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+    Max = linalg::Vec3{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
   }
 
   // Transform AABB by matrix (returns new, potentially larger AABB)
-  [[nodiscard]] auto Transform(const glm::mat4& matrix) const -> AABB
+  [[nodiscard]] auto Transform(const linalg::Mat4& matrix) const -> AABB
   {
     if (!IsValid()) {
       return {};
     }
 
     // Get all 8 corners of the AABB
-    const std::array<glm::vec3, 8> corners = {
-        glm::vec3 {Min.x, Min.y, Min.z},
-        glm::vec3 {Max.x, Min.y, Min.z},
-        glm::vec3 {Min.x, Max.y, Min.z},
-        glm::vec3 {Max.x, Max.y, Min.z},
-        glm::vec3 {Min.x, Min.y, Max.z},
-        glm::vec3 {Max.x, Min.y, Max.z},
-        glm::vec3 {Min.x, Max.y, Max.z},
-        glm::vec3 {Max.x, Max.y, Max.z},
+    const std::array<linalg::Vec3, 8> corners = {
+        linalg::Vec3 {Min.x(), Min.y(), Min.z()},
+        linalg::Vec3 {Max.x(), Min.y(), Min.z()},
+        linalg::Vec3 {Min.x(), Max.y(), Min.z()},
+        linalg::Vec3 {Max.x(), Max.y(), Min.z()},
+        linalg::Vec3 {Min.x(), Min.y(), Max.z()},
+        linalg::Vec3 {Max.x(), Min.y(), Max.z()},
+        linalg::Vec3 {Min.x(), Max.y(), Max.z()},
+        linalg::Vec3 {Max.x(), Max.y(), Max.z()},
     };
 
     AABB result {};
     for (const auto& corner : corners) {
-      const glm::vec4 transformed = matrix * glm::vec4(corner, 1.0F);
-      result.Expand(glm::vec3(transformed));
+      const linalg::Vec4 transformed = matrix * linalg::Vec4(corner, 1.0F);
+      result.Expand(transformed.to_sub_vec<3>());
     }
 
     return result;
   }
 
-  static auto CreateFromPoints(const std::span<glm::vec3> points) -> AABB
+  static auto CreateFromPoints(const std::span<linalg::Vec3> points) -> AABB
   {
     AABB result {};
     for (auto point : points) {
@@ -103,16 +104,16 @@ struct AABB
       return false;
     }
 
-    const glm::vec3 inv_dir = 1.0F / ray.Direction;
+    const linalg::Vec3 inv_dir = 1.0F / ray.Direction;
 
-    const glm::vec3 t_min = (Min - ray.Origin) * inv_dir;
-    const glm::vec3 t_max = (Max - ray.Origin) * inv_dir;
+    const linalg::Vec3 t_min = (Min - ray.Origin) * inv_dir;
+    const linalg::Vec3 t_max = (Max - ray.Origin) * inv_dir;
 
-    const glm::vec3 t1 = glm::min(t_min, t_max);
-    const glm::vec3 t2 = glm::max(t_min, t_max);
+    const linalg::Vec3 t1 = linalg::min(t_min, t_max);
+    const linalg::Vec3 t2 = linalg::max(t_min, t_max);
 
-    const float t_near = std::max({t1.x, t1.y, t1.z});
-    const float t_far = std::min({t2.x, t2.y, t2.z});
+    const float t_near = std::max({t1.x(), t1.y(), t1.z()});
+    const float t_far = std::min({t2.x(), t2.y(), t2.z()});
 
     if (t_near > t_far || t_far < 0.0F) {
       return false;
@@ -126,7 +127,7 @@ struct AABB
 // Bounding Sphere (for quick culling checks)
 struct BoundingSphere
 {
-  glm::vec3 Center {0.0F, 0.0F, 0.0F};
+  linalg::Vec3 Center {0.0F, 0.0F, 0.0F};
   float Radius {0.0F};
 
   [[nodiscard]] auto IsValid() const -> bool { return Radius > 0.0F; }
@@ -139,7 +140,7 @@ struct BoundingSphere
 
     BoundingSphere sphere {};
     sphere.Center = aabb.GetCenter();
-    sphere.Radius = glm::length(aabb.GetExtents());
+    sphere.Radius = linalg::magnitude(aabb.GetExtents());
     return sphere;
   }
 };

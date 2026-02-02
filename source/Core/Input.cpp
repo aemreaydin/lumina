@@ -7,9 +7,9 @@ std::array<bool, Input::MAX_KEYS> Input::SKeyState = {};
 std::array<bool, Input::MAX_KEYS> Input::SPrevKeyState = {};
 std::array<bool, Input::MAX_MOUSE_BUTTONS> Input::SMouseButtonState = {};
 std::array<bool, Input::MAX_MOUSE_BUTTONS> Input::SPrevMouseButtonState = {};
-glm::vec2 Input::SMousePosition = {};
-glm::vec2 Input::SMouseDelta = {};
-glm::vec2 Input::SScrollDelta = {};
+linalg::Vec2 Input::SMousePosition = {};
+linalg::Vec2 Input::SMouseDelta = {};
+linalg::Vec2 Input::SScrollDelta = {};
 bool Input::SMouseCaptured = false;
 
 void Input::BeginFrame()
@@ -60,14 +60,14 @@ void Input::ProcessEvent(void* sdl_event)
 
     case SDL_EVENT_MOUSE_MOTION: {
       SMousePosition = {event->motion.x, event->motion.y};
-      SMouseDelta.x += event->motion.xrel;
-      SMouseDelta.y += event->motion.yrel;
+      SMouseDelta.x() += event->motion.xrel;
+      SMouseDelta.y() += event->motion.yrel;
       break;
     }
 
     case SDL_EVENT_MOUSE_WHEEL: {
-      SScrollDelta.x += event->wheel.x;
-      SScrollDelta.y += event->wheel.y;
+      SScrollDelta.x() += event->wheel.x;
+      SScrollDelta.y() += event->wheel.y;
       break;
     }
 
@@ -130,17 +130,17 @@ auto Input::IsMouseButtonReleased(MouseButton button) -> bool
   return !SMouseButtonState[index] && SPrevMouseButtonState[index];
 }
 
-auto Input::GetMousePosition() -> glm::vec2
+auto Input::GetMousePosition() -> linalg::Vec2
 {
   return SMousePosition;
 }
 
-auto Input::GetMouseDelta() -> glm::vec2
+auto Input::GetMouseDelta() -> linalg::Vec2
 {
   return SMouseDelta;
 }
 
-auto Input::GetScrollDelta() -> glm::vec2
+auto Input::GetScrollDelta() -> linalg::Vec2
 {
   return SScrollDelta;
 }

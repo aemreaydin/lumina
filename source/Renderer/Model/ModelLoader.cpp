@@ -25,14 +25,14 @@ struct VertexHash
           + (seed >> 2);
     };
 
-    hash_combine(vertex.Position.x);
-    hash_combine(vertex.Position.y);
-    hash_combine(vertex.Position.z);
-    hash_combine(vertex.Normal.x);
-    hash_combine(vertex.Normal.y);
-    hash_combine(vertex.Normal.z);
-    hash_combine(vertex.TexCoord.x);
-    hash_combine(vertex.TexCoord.y);
+    hash_combine(vertex.Position.x());
+    hash_combine(vertex.Position.y());
+    hash_combine(vertex.Position.z());
+    hash_combine(vertex.Normal.x());
+    hash_combine(vertex.Normal.y());
+    hash_combine(vertex.Normal.z());
+    hash_combine(vertex.TexCoord.x());
+    hash_combine(vertex.TexCoord.y());
 
     return seed;
   }
@@ -71,7 +71,7 @@ static auto CreateMaterialFromTinyobj(const tinyobj::material_t& mat,
 
   // Set base color from diffuse
   material->SetBaseColorFactor(
-      glm::vec4(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0F));
+      linalg::Vec4{mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0F});
 
   // Estimate metallic/roughness from specular
   const float specular_avg =
@@ -254,7 +254,7 @@ auto OBJModelLoader::Load(const std::filesystem::path& path,
   // Add default material if none were loaded
   if (model->GetMaterialCount() == 0) {
     auto default_material = std::make_unique<Material>("Default");
-    default_material->SetBaseColorFactor(glm::vec4(0.8F, 0.8F, 0.8F, 1.0F));
+    default_material->SetBaseColorFactor(linalg::Vec4{0.8F, 0.8F, 0.8F, 1.0F});
     model->AddMaterial(std::move(default_material));
   }
 

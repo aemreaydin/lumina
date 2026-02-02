@@ -1,0 +1,3 @@
+[submodule "extern/linalg"]
+	path = extern/linalg
+	url = git@github.com:aemreaydin/linalg

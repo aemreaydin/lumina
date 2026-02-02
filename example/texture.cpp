@@ -1,8 +1,9 @@
 #include <cstddef>
 #include <memory>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <linalg/vec.hpp>
+#include <linalg/mat4.hpp>
+#include <linalg/transform.hpp>
 
 #include "Renderer/RHI/RHISampler.hpp"
 #define STB_IMAGE_IMPLEMENTATION
@@ -22,13 +23,13 @@
 
 struct Vertex
 {
-  glm::vec3 Position;
-  glm::vec2 TexCoord;
+  linalg::Vec3 Position;
+  linalg::Vec2 TexCoord;
 };
 
 struct Transforms
 {
-  glm::mat4 MVP;
+  linalg::Mat4 MVP;
 };
 
 class TextureApp : public Application
@@ -150,7 +151,7 @@ protected:
 
     Transforms transforms {};
     transforms.MVP =
-        glm::rotate(glm::mat4(1.0F), m_Angle, glm::vec3(0.0F, 0.0F, 1.0F));
+        static_cast<linalg::Mat4>(linalg::make_rotation4(m_Angle, linalg::Vec3{0.0F, 0.0F, 1.0F}));
 
     m_UniformBuffer->Upload(&transforms, sizeof(Transforms), 0);
 

@@ -4,7 +4,7 @@
 #include <array>
 #include <cstdint>
 
-#include <glm/vec2.hpp>
+#include <linalg/vec.hpp>
 
 enum class KeyCode : uint8_t
 {
@@ -108,9 +108,9 @@ public:
   [[nodiscard]] static auto IsMouseButtonReleased(MouseButton button) -> bool;
 
   // Mouse position and movement
-  [[nodiscard]] static auto GetMousePosition() -> glm::vec2;
-  [[nodiscard]] static auto GetMouseDelta() -> glm::vec2;
-  [[nodiscard]] static auto GetScrollDelta() -> glm::vec2;
+  [[nodiscard]] static auto GetMousePosition() -> linalg::Vec2;
+  [[nodiscard]] static auto GetMouseDelta() -> linalg::Vec2;
+  [[nodiscard]] static auto GetScrollDelta() -> linalg::Vec2;
 
   // Mouse capture (for FPS camera - hides cursor and captures mouse)
   static void SetMouseCaptured(bool captured);
@@ -127,9 +127,9 @@ private:
   static std::array<bool, MAX_MOUSE_BUTTONS> SPrevMouseButtonState;
 
   // Mouse position and deltas
-  static glm::vec2 SMousePosition;
-  static glm::vec2 SMouseDelta;
-  static glm::vec2 SScrollDelta;
+  static linalg::Vec2 SMousePosition;
+  static linalg::Vec2 SMouseDelta;
+  static linalg::Vec2 SScrollDelta;
 
   static bool SMouseCaptured;
 };

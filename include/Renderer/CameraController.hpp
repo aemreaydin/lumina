@@ -1,9 +1,7 @@
 #ifndef RENDERER_CAMERA_CONTROLLER_HPP
 #define RENDERER_CAMERA_CONTROLLER_HPP
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
 
 class Camera;
 
@@ -66,7 +64,7 @@ public:
 
   void Update(float delta_time) override;
 
-  void SetTarget(const glm::vec3& target);
+  void SetTarget(const linalg::Vec3& target);
   void SetDistance(float distance);
 
   void SetOrbitSpeed(float speed) { m_OrbitSpeed = speed; }
@@ -75,7 +73,7 @@ public:
 
   void SetDistanceLimits(float min_distance, float max_distance);
 
-  [[nodiscard]] auto GetTarget() const -> const glm::vec3& { return m_Target; }
+  [[nodiscard]] auto GetTarget() const -> const linalg::Vec3& { return m_Target; }
 
   [[nodiscard]] auto GetDistance() const -> float { return m_Distance; }
 
@@ -86,7 +84,7 @@ public:
 private:
   void update_camera_position();
 
-  glm::vec3 m_Target {0.0F, 0.0F, 0.0F};
+  linalg::Vec3 m_Target {0.0F, 0.0F, 0.0F};
   float m_Distance {10.0F};
   float m_MinDistance {1.0F};
   float m_MaxDistance {100.0F};

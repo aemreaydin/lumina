@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
 
 class RHIBuffer;
 class RHIDescriptorSet;
@@ -16,12 +16,12 @@ class RHITexture;
 
 struct alignas(16) MaterialProperties
 {
-  glm::vec4 BaseColorFactor {1.0F, 1.0F, 1.0F, 1.0F};
+  linalg::Vec4 BaseColorFactor {1.0F, 1.0F, 1.0F, 1.0F};
   float MetallicFactor {0.0F};
   float RoughnessFactor {1.0F};
   float AlphaCutoff {0.5F};
   float Padding0 {0.0F};
-  glm::vec3 EmissiveFactor {0.0F, 0.0F, 0.0F};
+  linalg::Vec3 EmissiveFactor {0.0F, 0.0F, 0.0F};
   uint32_t Flags {0};
 };
 
@@ -82,10 +82,10 @@ public:
   void SetOcclusionTexture(std::shared_ptr<RHITexture> texture);
 
   // Property setters
-  void SetBaseColorFactor(const glm::vec4& color);
+  void SetBaseColorFactor(const linalg::Vec4& color);
   void SetMetallicFactor(float metallic);
   void SetRoughnessFactor(float roughness);
-  void SetEmissiveFactor(const glm::vec3& emissive);
+  void SetEmissiveFactor(const linalg::Vec3& emissive);
   void SetAlphaMode(AlphaMode mode);
   void SetAlphaCutoff(float cutoff);
   void SetDoubleSided(bool double_sided);

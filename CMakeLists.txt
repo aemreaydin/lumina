@@ -132,8 +132,10 @@ find_package(tomlplusplus CONFIG REQUIRED)
 
 target_link_libraries(lumina_lumina PUBLIC tomlplusplus::tomlplusplus)
 
-find_package(glm CONFIG REQUIRED)
-target_link_libraries(lumina_lumina PUBLIC glm::glm)
+set(LINALG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LINALG_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/linalg)
+target_link_libraries(lumina_lumina PUBLIC linalg)
 
 find_package(tinyobjloader CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC tinyobjloader::tinyobjloader)

@@ -58,7 +58,12 @@ void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
 
   NodeUBO data {};
   data.Model = node.GetTransform().GetWorldMatrix();
-  data.NormalMatrix = glm::mat4(node.GetTransform().GetNormalMatrix());
+  const auto normal_mat = node.GetTransform().GetNormalMatrix();
+  data.NormalMatrix = linalg::Mat4{
+      normal_mat(0, 0), normal_mat(0, 1), normal_mat(0, 2), 0.0F,
+      normal_mat(1, 0), normal_mat(1, 1), normal_mat(1, 2), 0.0F,
+      normal_mat(2, 0), normal_mat(2, 1), normal_mat(2, 2), 0.0F,
+      0.0F, 0.0F, 0.0F, 1.0F};
 
   m_NodeDynamicBuffer->Upload(&data, sizeof(NodeUBO), m_NodeDynamicOffset);
 
@@ -180,7 +185,7 @@ void SceneRenderer::update_camera_ubo(const Camera& camera)
   data.View = camera.GetViewMatrix();
   data.Projection = camera.GetProjectionMatrix();
   data.ViewProjection = camera.GetViewProjectionMatrix();
-  data.CameraPosition = glm::vec4(camera.GetPosition(), 1.0F);
+  data.CameraPosition = linalg::Vec4(camera.GetPosition(), 1.0F);
 
   m_CameraUBO->Upload(&data, sizeof(CameraUBO), 0);
 }

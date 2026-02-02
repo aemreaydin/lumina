@@ -1,8 +1,6 @@
 #include <memory>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
 
 #include "Core/Application.hpp"
 #include "Core/Input.hpp"
@@ -46,35 +44,35 @@ protected:
 
     auto* node1 = m_Scene->CreateNode("Volleyball1");
     node1->SetModel(model);
-    node1->SetPosition(glm::vec3(0.0F, 0.0F, 0.0F));
+    node1->SetPosition(linalg::Vec3{0.0F, 0.0F, 0.0F});
     node1->SetScale(0.1F);
 
     auto* node2 = m_Scene->CreateNode("Volleyball2");
     node2->SetModel(model);
-    node2->SetPosition(glm::vec3(5.0F, 0.0F, 0.0F));
+    node2->SetPosition(linalg::Vec3{5.0F, 0.0F, 0.0F});
     node2->SetScale(0.1F);
 
     auto* node3 = m_Scene->CreateNode("Volleyball3");
     node3->SetModel(model);
-    node3->SetPosition(glm::vec3(-5.0F, 0.0F, 0.0F));
+    node3->SetPosition(linalg::Vec3{-5.0F, 0.0F, 0.0F});
     node3->SetScale(0.1F);
 
     auto* child = m_Scene->CreateNode("ChildBall", node1);
     child->SetModel(model);
-    child->SetPosition(glm::vec3(0.0F, 30.0F, 0.0F));
+    child->SetPosition(linalg::Vec3{0.0F, 30.0F, 0.0F});
     child->SetScale(1.0F);
 
     auto* child1 = m_Scene->CreateNode("ChildBall", node1);
     child1->SetModel(model);
-    child1->SetPosition(glm::vec3(0.0F, -30.0F, 0.0F));
+    child1->SetPosition(linalg::Vec3{0.0F, -30.0F, 0.0F});
     child1->SetScale(1.0F);
 
     m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
-    m_Camera.SetPosition(glm::vec3(15.0F, 10.0F, 15.0F));
-    m_Camera.SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
+    m_Camera.SetPosition(linalg::Vec3{15.0F, 10.0F, 15.0F});
+    m_Camera.SetTarget(linalg::Vec3{0.0F, 0.0F, 0.0F});
 
     m_OrbitController = std::make_unique<OrbitCameraController>(&m_Camera);
-    m_OrbitController->SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
+    m_OrbitController->SetTarget(linalg::Vec3{0.0F, 0.0F, 0.0F});
     m_OrbitController->SetDistance(20.0F);
     m_OrbitController->SetDistanceLimits(5.0F, 50.0F);
 
@@ -114,7 +112,7 @@ protected:
       auto* node = m_Scene->FindNode("Volleyball1");
       if (node != nullptr) {
         node->GetTransform().RotateEuler(
-            glm::vec3(0.0F, 45.0F * delta_time, 0.0F));
+            linalg::Vec3{0.0F, 45.0F * delta_time, 0.0F});
       }
     }
 
@@ -123,8 +121,8 @@ protected:
       auto* swapchain = GetDevice().GetSwapchain();
       const auto mouse_pos = Input::GetMousePosition();
       const auto ray =
-          m_Camera.ScreenPointToRay(mouse_pos.x,
-                                    mouse_pos.y,
+          m_Camera.ScreenPointToRay(mouse_pos.x(),
+                                    mouse_pos.y(),
                                     static_cast<float>(swapchain->GetWidth()),
                                     static_cast<float>(swapchain->GetHeight()));
       GetImGui().SetSelectedNode(m_Scene->PickNode(ray));

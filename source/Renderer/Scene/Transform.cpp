@@ -1,30 +1,30 @@
 #include "Renderer/Scene/Transform.hpp"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/euler_angles.hpp>
-#include <glm/gtx/matrix_decompose.hpp>
+#include <linalg/mat3.hpp>
+#include <linalg/quaternion.hpp>
+#include <linalg/transform.hpp>
+#include <linalg/utility.hpp>
 
-void Transform::SetPosition(const glm::vec3& position)
+void Transform::SetPosition(const linalg::Vec3& position)
 {
   m_Position = position;
   MarkDirty();
 }
 
-void Transform::SetRotation(const glm::quat& rotation)
+void Transform::SetRotation(const linalg::Quat& rotation)
 {
-  m_Rotation = glm::normalize(rotation);
+  m_Rotation = linalg::normalized(rotation);
   MarkDirty();
 }
 
-void Transform::SetRotationEuler(const glm::vec3& euler_degrees)
+void Transform::SetRotationEuler(const linalg::Vec3& euler_degrees)
 {
-  const glm::vec3 radians = glm::radians(euler_degrees);
-  m_Rotation = glm::quat(radians);
+  const linalg::Vec3 radians = linalg::radians(euler_degrees);
+  m_Rotation = linalg::quat_from_euler(radians);
   MarkDirty();
 }
 
-void Transform::SetScale(const glm::vec3& scale)
+void Transform::SetScale(const linalg::Vec3& scale)
 {
   m_Scale = scale;
   MarkDirty();
@@ -32,49 +32,49 @@ void Transform::SetScale(const glm::vec3& scale)
 
 void Transform::SetScale(float uniform_scale)
 {
-  m_Scale = glm::vec3(uniform_scale);
+  m_Scale = linalg::Vec3{uniform_scale, uniform_scale, uniform_scale};
   MarkDirty();
 }
 
-auto Transform::GetPosition() const -> const glm::vec3&
+auto Transform::GetPosition() const -> const linalg::Vec3&
 {
   return m_Position;
 }
 
-auto Transform::GetRotation() const -> const glm::quat&
+auto Transform::GetRotation() const -> const linalg::Quat&
 {
   return m_Rotation;
 }
 
-auto Transform::GetRotationEuler() const -> glm::vec3
+auto Transform::GetRotationEuler() const -> linalg::Vec3
 {
-  return glm::degrees(glm::eulerAngles(m_Rotation));
+  return linalg::degrees(linalg::euler_angles(m_Rotation));
 }
 
-auto Transform::GetScale() const -> const glm::vec3&
+auto Transform::GetScale() const -> const linalg::Vec3&
 {
   return m_Scale;
 }
 
-void Transform::Translate(const glm::vec3& delta)
+void Transform::Translate(const linalg::Vec3& delta)
 {
   m_Position += delta;
   MarkDirty();
 }
 
-void Transform::Rotate(const glm::quat& delta)
+void Transform::Rotate(const linalg::Quat& delta)
 {
-  m_Rotation = glm::normalize(delta * m_Rotation);
+  m_Rotation = linalg::normalized(delta * m_Rotation);
   MarkDirty();
 }
 
-void Transform::RotateEuler(const glm::vec3& euler_degrees)
+void Transform::RotateEuler(const linalg::Vec3& euler_degrees)
 {
-  const glm::vec3 radians = glm::radians(euler_degrees);
-  Rotate(glm::quat(radians));
+  const linalg::Vec3 radians = linalg::radians(euler_degrees);
+  Rotate(linalg::quat_from_euler(radians));
 }
 
-void Transform::ScaleBy(const glm::vec3& factor)
+void Transform::ScaleBy(const linalg::Vec3& factor)
 {
   m_Scale *= factor;
   MarkDirty();
@@ -86,34 +86,38 @@ void Transform::ScaleBy(float uniform_factor)
   MarkDirty();
 }
 
-auto Transform::GetForward() const -> glm::vec3
+auto Transform::GetForward() const -> linalg::Vec3
 {
-  return glm::normalize(m_Rotation * glm::vec3(0.0F, 0.0F, -1.0F));
+  return linalg::normalized(linalg::transform(linalg::Vec3{0.0F, 0.0F, -1.0F}, m_Rotation));
 }
 
-auto Transform::GetRight() const -> glm::vec3
+auto Transform::GetRight() const -> linalg::Vec3
 {
-  return glm::normalize(m_Rotation * glm::vec3(1.0F, 0.0F, 0.0F));
+  return linalg::normalized(linalg::transform(linalg::Vec3{1.0F, 0.0F, 0.0F}, m_Rotation));
 }
 
-auto Transform::GetUp() const -> glm::vec3
+auto Transform::GetUp() const -> linalg::Vec3
 {
-  return glm::normalize(m_Rotation * glm::vec3(0.0F, 1.0F, 0.0F));
+  return linalg::normalized(linalg::transform(linalg::Vec3{0.0F, 1.0F, 0.0F}, m_Rotation));
 }
 
-auto Transform::GetLocalMatrix() const -> const glm::mat4&
+auto Transform::GetLocalMatrix() const -> const linalg::Mat4&
 {
   return m_LocalMatrix;
 }
 
-auto Transform::GetWorldMatrix() const -> const glm::mat4&
+auto Transform::GetWorldMatrix() const -> const linalg::Mat4&
 {
   return m_WorldMatrix;
 }
 
-auto Transform::GetNormalMatrix() const -> glm::mat3
+auto Transform::GetNormalMatrix() const -> linalg::Mat3
 {
-  return glm::transpose(glm::inverse(glm::mat3(m_WorldMatrix)));
+  const linalg::Mat3 upper3x3{
+      m_WorldMatrix(0, 0), m_WorldMatrix(0, 1), m_WorldMatrix(0, 2),
+      m_WorldMatrix(1, 0), m_WorldMatrix(1, 1), m_WorldMatrix(1, 2),
+      m_WorldMatrix(2, 0), m_WorldMatrix(2, 1), m_WorldMatrix(2, 2)};
+  return linalg::transpose(linalg::inverse(upper3x3));
 }
 
 void Transform::UpdateLocalMatrix()
@@ -122,10 +126,10 @@ void Transform::UpdateLocalMatrix()
     return;
   }
 
-  m_LocalMatrix = glm::mat4(1.0F);
-  m_LocalMatrix = glm::translate(m_LocalMatrix, m_Position);
-  m_LocalMatrix *= glm::mat4_cast(m_Rotation);
-  m_LocalMatrix = glm::scale(m_LocalMatrix, m_Scale);
+  m_LocalMatrix = linalg::Mat4::identity();
+  m_LocalMatrix = m_LocalMatrix * static_cast<linalg::Mat4>(linalg::make_translation(m_Position));
+  m_LocalMatrix = m_LocalMatrix * m_Rotation.to_mat4();
+  m_LocalMatrix = m_LocalMatrix * static_cast<linalg::Mat4>(linalg::make_scale(m_Scale));
   m_LocalDirty = false;
 }
 
@@ -180,20 +184,19 @@ auto Transform::IsWorldDirty() const -> bool
   return m_WorldDirty;
 }
 
-void Transform::LookAt(const glm::vec3& target, const glm::vec3& v_up)
+void Transform::LookAt(const linalg::Vec3& target, const linalg::Vec3& v_up)
 {
-  const glm::vec3 direction = glm::normalize(target - m_Position);
+  const linalg::Vec3 direction = linalg::normalized(target - m_Position);
 
   // Calculate rotation to face the target
-  const glm::vec3 right = glm::normalize(glm::cross(v_up, direction));
-  const glm::vec3 actual_up = glm::cross(direction, right);
+  const linalg::Vec3 right = linalg::normalized(linalg::cross(v_up, direction));
+  const linalg::Vec3 actual_up = linalg::cross(direction, right);
 
-  glm::mat3 rotation_matrix;
-  rotation_matrix[0] = right;
-  rotation_matrix[1] = actual_up;
-  rotation_matrix[2] = -direction;
+  linalg::Mat3 rotation_matrix{right, actual_up, -direction};
 
-  m_Rotation = glm::normalize(glm::quat_cast(rotation_matrix));
+  linalg::Quat q;
+  q.set_rotation_from_matrix(rotation_matrix);
+  m_Rotation = linalg::normalized(q);
   MarkDirty();
 }
 
@@ -201,9 +204,9 @@ auto Transform::Lerp(const Transform& from, const Transform& to, float t)
     -> Transform
 {
   Transform result;
-  result.m_Position = glm::mix(from.m_Position, to.m_Position, t);
-  result.m_Rotation = glm::slerp(from.m_Rotation, to.m_Rotation, t);
-  result.m_Scale = glm::mix(from.m_Scale, to.m_Scale, t);
+  result.m_Position = linalg::mix(from.m_Position, to.m_Position, t);
+  result.m_Rotation = linalg::slerp(from.m_Rotation, to.m_Rotation, t);
+  result.m_Scale = linalg::mix(from.m_Scale, to.m_Scale, t);
   result.MarkDirty();
   return result;
 }

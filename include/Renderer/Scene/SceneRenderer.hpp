@@ -3,7 +3,8 @@
 
 #include <memory>
 
-#include <glm/glm.hpp>
+#include <linalg/vec.hpp>
+#include <linalg/mat4.hpp>
 
 #include "Renderer/RHI/RHIPipeline.hpp"
 #include "Renderer/ShaderCompiler.hpp"
@@ -22,16 +23,16 @@ class RHICommandBuffer;
 
 struct CameraUBO
 {
-  glm::mat4 View;
-  glm::mat4 Projection;
-  glm::mat4 ViewProjection;
-  glm::vec4 CameraPosition;
+  linalg::Mat4 View;
+  linalg::Mat4 Projection;
+  linalg::Mat4 ViewProjection;
+  linalg::Vec4 CameraPosition;
 };
 
 struct NodeUBO
 {
-  glm::mat4 Model;
-  glm::mat4 NormalMatrix;
+  linalg::Mat4 Model;
+  linalg::Mat4 NormalMatrix;
 };
 
 class SceneRenderer

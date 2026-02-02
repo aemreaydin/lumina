@@ -28,9 +28,7 @@ tasks:
       - example/**/*.cpp
       - example/**/*.hpp
     generates:
-      - build/simple/example/triangle{{exeExt}}
-      - build/simple/example/texture{{exeExt}}
-      - build/simple/example/depth{{exeExt}}
+      - build/simple/example/scene_demo{{exeExt}}
     cmds:
       - cmake --build --preset={{.PRESET}}
 

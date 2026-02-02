@@ -22,7 +22,7 @@ install(
 )
 
 install(
-    TARGETS lumina_lumina imgui
+    TARGETS lumina_lumina imgui linalg
     EXPORT luminaTargets
     RUNTIME #
     COMPONENT lumina_Runtime

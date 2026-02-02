@@ -20,9 +20,9 @@ void FPSCameraController::Update(float delta_time)
 
   if (Input::IsMouseCaptured() || Input::IsMouseButtonDown(MouseButton::Right))
   {
-    const glm::vec2 mouse_delta = Input::GetMouseDelta();
-    m_Camera->Rotate(-mouse_delta.y * m_LookSensitivity,
-                     mouse_delta.x * m_LookSensitivity);
+    const linalg::Vec2 mouse_delta = Input::GetMouseDelta();
+    m_Camera->Rotate(-mouse_delta.y() * m_LookSensitivity,
+                     mouse_delta.x() * m_LookSensitivity);
   }
 
   if (Input::IsMouseButtonPressed(MouseButton::Right)) {
@@ -36,29 +36,29 @@ void FPSCameraController::Update(float delta_time)
     Input::SetMouseCaptured(/*captured=*/false);
   }
 
-  glm::vec3 movement {0.0F};
+  linalg::Vec3 movement {0.0F, 0.0F, 0.0F};
 
   if (Input::IsKeyDown(KeyCode::W)) {
-    movement.y += 1.0F;
+    movement.y() += 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::S)) {
-    movement.y -= 1.0F;
+    movement.y() -= 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::A)) {
-    movement.x -= 1.0F;
+    movement.x() -= 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::D)) {
-    movement.x += 1.0F;
+    movement.x() += 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::E)) {
-    movement.z += 1.0F;
+    movement.z() += 1.0F;
   }
   if (Input::IsKeyDown(KeyCode::Q)) {
-    movement.z -= 1.0F;
+    movement.z() -= 1.0F;
   }
 
-  if (glm::length(movement) > 0.0F) {
-    movement = glm::normalize(movement);
+  if (linalg::magnitude(movement) > 0.0F) {
+    movement = linalg::normalized(movement);
   }
 
   float speed = m_MoveSpeed;
@@ -82,23 +82,23 @@ void OrbitCameraController::Update([[maybe_unused]] float delta_time)
   }
 
   if (Input::IsMouseButtonDown(MouseButton::Left)) {
-    const glm::vec2 mouse_delta = Input::GetMouseDelta();
-    m_Azimuth += mouse_delta.x * m_OrbitSpeed;
-    m_Elevation -= mouse_delta.y * m_OrbitSpeed;
+    const linalg::Vec2 mouse_delta = Input::GetMouseDelta();
+    m_Azimuth += mouse_delta.x() * m_OrbitSpeed;
+    m_Elevation -= mouse_delta.y() * m_OrbitSpeed;
 
     m_Elevation = std::clamp(m_Elevation, -89.0F, 89.0F);
   }
 
-  const glm::vec2 scroll = Input::GetScrollDelta();
-  if (std::fabs(scroll.y) > std::numeric_limits<float>::epsilon()) {
-    m_Distance -= scroll.y * m_ZoomSpeed;
+  const linalg::Vec2 scroll = Input::GetScrollDelta();
+  if (std::fabs(scroll.y()) > std::numeric_limits<float>::epsilon()) {
+    m_Distance -= scroll.y() * m_ZoomSpeed;
     m_Distance = std::clamp(m_Distance, m_MinDistance, m_MaxDistance);
   }
 
   update_camera_position();
 }
 
-void OrbitCameraController::SetTarget(const glm::vec3& target)
+void OrbitCameraController::SetTarget(const linalg::Vec3& target)
 {
   m_Target = target;
   update_camera_position();
@@ -124,14 +124,14 @@ void OrbitCameraController::update_camera_position()
     return;
   }
 
-  const float azimuth_rad = glm::radians(m_Azimuth);
-  const float elevation_rad = glm::radians(m_Elevation);
+  const float azimuth_rad = linalg::radians(m_Azimuth);
+  const float elevation_rad = linalg::radians(m_Elevation);
 
   const float horizontal_dist = m_Distance * std::cos(elevation_rad);
-  const float x = m_Target.x + (horizontal_dist * std::cos(azimuth_rad));
-  const float y = m_Target.y + (horizontal_dist * std::sin(azimuth_rad));
-  const float z = m_Target.z + (m_Distance * std::sin(elevation_rad));
+  const float x = m_Target.x() + (horizontal_dist * std::cos(azimuth_rad));
+  const float y = m_Target.y() + (horizontal_dist * std::sin(azimuth_rad));
+  const float z = m_Target.z() + (m_Distance * std::sin(elevation_rad));
 
-  m_Camera->SetPosition(glm::vec3(x, y, z));
+  m_Camera->SetPosition(linalg::Vec3{x, y, z});
   m_Camera->SetTarget(m_Target);
 }

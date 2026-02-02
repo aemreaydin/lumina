@@ -3,10 +3,8 @@
 #include <string>
 #include <unordered_map>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <linalg/vec.hpp>
+#include <linalg/mat4.hpp>
 
 #include "Renderer/RHI/RHISampler.hpp"
 #include "Renderer/RHI/RHISwapchain.hpp"
@@ -33,13 +31,13 @@
 
 struct Vertex
 {
-  glm::vec3 Position;
-  glm::vec2 TexCoord;
+  linalg::Vec3 Position;
+  linalg::Vec2 TexCoord;
 };
 
 struct Transforms
 {
-  glm::mat4 MVP;
+  linalg::Mat4 MVP;
 };
 
 struct ModelData
@@ -91,11 +89,11 @@ static auto LoadModel(const std::string& path) -> ModelData
         };
       }
 
-      const size_t hash = std::hash<float> {}(vertex.Position.x)
-          ^ (std::hash<float> {}(vertex.Position.y) << 1)
-          ^ (std::hash<float> {}(vertex.Position.z) << 2)
-          ^ (std::hash<float> {}(vertex.TexCoord.x) << 3)
-          ^ (std::hash<float> {}(vertex.TexCoord.y) << 4);
+      const size_t hash = std::hash<float> {}(vertex.Position.x())
+          ^ (std::hash<float> {}(vertex.Position.y()) << 1)
+          ^ (std::hash<float> {}(vertex.Position.z()) << 2)
+          ^ (std::hash<float> {}(vertex.TexCoord.x()) << 3)
+          ^ (std::hash<float> {}(vertex.TexCoord.y()) << 4);
 
       if (!unique_vertices.contains(hash)) {
         unique_vertices[hash] = static_cast<uint32_t>(model.Vertices.size());
@@ -218,12 +216,12 @@ protected:
 
     // Setup camera
     m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 100.0F);
-    m_Camera.SetPosition(glm::vec3(20.0F, 20.0F, 10.0F));
-    m_Camera.SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
+    m_Camera.SetPosition(linalg::Vec3{20.0F, 20.0F, 10.0F});
+    m_Camera.SetTarget(linalg::Vec3{0.0F, 0.0F, 0.0F});
 
     // Create both camera controllers
     m_OrbitController = std::make_unique<OrbitCameraController>(&m_Camera);
-    m_OrbitController->SetTarget(glm::vec3(0.0F, 0.0F, 0.0F));
+    m_OrbitController->SetTarget(linalg::Vec3{0.0F, 0.0F, 0.0F});
     m_OrbitController->SetDistance(20.0F);
     m_OrbitController->SetDistanceLimits(5.0F, 50.0F);
 
@@ -272,7 +270,7 @@ protected:
     auto& device = GetDevice();
     auto* cmd = device.GetCurrentCommandBuffer();
 
-    const glm::mat4 model = glm::mat4(1.0);
+    const linalg::Mat4 model = linalg::Mat4::identity();
 
     Transforms transforms {};
     transforms.MVP = m_Camera.GetViewProjectionMatrix() * model;

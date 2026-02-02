@@ -3,7 +3,9 @@
 
 #include "Renderer/Camera.hpp"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <linalg/mat4.hpp>
+#include <linalg/projection.hpp>
+#include <linalg/utility.hpp>
 
 Camera::Camera()
 {
@@ -12,7 +14,7 @@ Camera::Camera()
   recalculate_projection_matrix();
 }
 
-void Camera::SetPosition(const glm::vec3& position)
+void Camera::SetPosition(const linalg::Vec3& position)
 {
   m_Position = position;
   recalculate_view_matrix();
@@ -26,13 +28,13 @@ void Camera::SetRotation(float pitch, float yaw)
   recalculate_view_matrix();
 }
 
-void Camera::SetTarget(const glm::vec3& target)
+void Camera::SetTarget(const linalg::Vec3& target)
 {
-  const glm::vec3 direction = glm::normalize(target - m_Position);
+  const linalg::Vec3 direction = linalg::normalized(target - m_Position);
 
-  m_Pitch = glm::degrees(std::asin(direction.z));
+  m_Pitch = linalg::degrees(std::asin(direction.z()));
 
-  m_Yaw = glm::degrees(std::atan2(direction.y, direction.x));
+  m_Yaw = linalg::degrees(std::atan2(direction.y(), direction.x()));
 
   update_direction_vectors();
   recalculate_view_matrix();
@@ -74,22 +76,22 @@ void Camera::SetAspectRatio(float aspect_ratio)
   recalculate_projection_matrix();
 }
 
-auto Camera::GetPosition() const -> const glm::vec3&
+auto Camera::GetPosition() const -> const linalg::Vec3&
 {
   return m_Position;
 }
 
-auto Camera::GetForward() const -> const glm::vec3&
+auto Camera::GetForward() const -> const linalg::Vec3&
 {
   return m_Forward;
 }
 
-auto Camera::GetRight() const -> const glm::vec3&
+auto Camera::GetRight() const -> const linalg::Vec3&
 {
   return m_Right;
 }
 
-auto Camera::GetUp() const -> const glm::vec3&
+auto Camera::GetUp() const -> const linalg::Vec3&
 {
   return m_Up;
 }
@@ -104,17 +106,17 @@ auto Camera::GetYaw() const -> float
   return m_Yaw;
 }
 
-auto Camera::GetViewMatrix() const -> const glm::mat4&
+auto Camera::GetViewMatrix() const -> const linalg::Mat4&
 {
   return m_ViewMatrix;
 }
 
-auto Camera::GetProjectionMatrix() const -> const glm::mat4&
+auto Camera::GetProjectionMatrix() const -> const linalg::Mat4&
 {
   return m_ProjectionMatrix;
 }
 
-auto Camera::GetViewProjectionMatrix() const -> glm::mat4
+auto Camera::GetViewProjectionMatrix() const -> linalg::Mat4
 {
   return m_ProjectionMatrix * m_ViewMatrix;
 }
@@ -128,36 +130,36 @@ auto Camera::ScreenPointToRay(float screen_x,
   const float ndc_x = (screen_x / viewport_w) * 2.0F - 1.0F;
   const float ndc_y = 1.0F - (screen_y / viewport_h) * 2.0F;
 
-  const glm::mat4 inv_vp = glm::inverse(GetViewProjectionMatrix());
+  const linalg::Mat4 inv_vp = linalg::inverse(GetViewProjectionMatrix());
 
   // Unproject near and far points (depth 0-1 due to
   // GLM_FORCE_DEPTH_ZERO_TO_ONE)
-  const glm::vec4 near_clip(ndc_x, ndc_y, 0.0F, 1.0F);
-  const glm::vec4 far_clip(ndc_x, ndc_y, 1.0F, 1.0F);
+  const linalg::Vec4 near_clip{ndc_x, ndc_y, 0.0F, 1.0F};
+  const linalg::Vec4 far_clip{ndc_x, ndc_y, 1.0F, 1.0F};
 
-  glm::vec4 near_world = inv_vp * near_clip;
-  glm::vec4 far_world = inv_vp * far_clip;
+  linalg::Vec4 near_world = inv_vp * near_clip;
+  linalg::Vec4 far_world = inv_vp * far_clip;
 
-  near_world /= near_world.w;
-  far_world /= far_world.w;
+  near_world /= near_world.w();
+  far_world /= far_world.w();
 
   Ray ray;
-  ray.Origin = glm::vec3(near_world);
-  ray.Direction = glm::normalize(glm::vec3(far_world - near_world));
+  ray.Origin = near_world.to_sub_vec<3>();
+  ray.Direction = linalg::normalized((far_world - near_world).to_sub_vec<3>());
   return ray;
 }
 
-void Camera::Move(const glm::vec3& offset)
+void Camera::Move(const linalg::Vec3& offset)
 {
   m_Position += offset;
   recalculate_view_matrix();
 }
 
-void Camera::MoveRelative(const glm::vec3& offset)
+void Camera::MoveRelative(const linalg::Vec3& offset)
 {
-  m_Position += m_Right * offset.x;
-  m_Position += m_Forward * offset.y;
-  m_Position += m_Up * offset.z;
+  m_Position += m_Right * offset.x();
+  m_Position += m_Forward * offset.y();
+  m_Position += m_Up * offset.z();
   recalculate_view_matrix();
 }
 
@@ -174,16 +176,16 @@ void Camera::Rotate(float delta_pitch, float delta_yaw)
 
 void Camera::recalculate_view_matrix()
 {
-  m_ViewMatrix = glm::lookAt(m_Position, m_Position + m_Forward, WORLD_UP);
+  m_ViewMatrix = linalg::look_at(m_Position, m_Position + m_Forward, WORLD_UP);
 }
 
 void Camera::recalculate_projection_matrix()
 {
   if (m_ProjectionType == ProjectionType::Perspective) {
-    m_ProjectionMatrix = glm::perspective(
-        glm::radians(m_FOV), m_AspectRatio, m_NearPlane, m_FarPlane);
+    m_ProjectionMatrix = linalg::perspective(
+        linalg::radians(m_FOV), m_AspectRatio, m_NearPlane, m_FarPlane);
   } else {
-    m_ProjectionMatrix = glm::ortho(m_OrthoLeft,
+    m_ProjectionMatrix = linalg::ortho(m_OrthoLeft,
                                     m_OrthoRight,
                                     m_OrthoBottom,
                                     m_OrthoTop,
@@ -194,15 +196,15 @@ void Camera::recalculate_projection_matrix()
 
 void Camera::update_direction_vectors()
 {
-  const float pitch_rad = glm::radians(m_Pitch);
-  const float yaw_rad = glm::radians(m_Yaw);
+  const float pitch_rad = linalg::radians(m_Pitch);
+  const float yaw_rad = linalg::radians(m_Yaw);
 
-  m_Forward.x = std::cos(pitch_rad) * std::cos(yaw_rad);
-  m_Forward.y = std::cos(pitch_rad) * std::sin(yaw_rad);
-  m_Forward.z = std::sin(pitch_rad);
-  m_Forward = glm::normalize(m_Forward);
+  m_Forward.x() = std::cos(pitch_rad) * std::cos(yaw_rad);
+  m_Forward.y() = std::cos(pitch_rad) * std::sin(yaw_rad);
+  m_Forward.z() = std::sin(pitch_rad);
+  m_Forward = linalg::normalized(m_Forward);
 
-  m_Right = glm::normalize(glm::cross(m_Forward, WORLD_UP));
+  m_Right = linalg::normalized(linalg::cross(m_Forward, WORLD_UP));
 
-  m_Up = glm::normalize(glm::cross(m_Right, m_Forward));
+  m_Up = linalg::normalized(linalg::cross(m_Right, m_Forward));
 }

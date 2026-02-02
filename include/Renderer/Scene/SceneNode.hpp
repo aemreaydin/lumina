@@ -41,14 +41,14 @@ public:
   [[nodiscard]] auto GetTransform() const -> const Transform&;
 
   // Convenience transform methods
-  void SetPosition(const glm::vec3& position);
-  void SetRotation(const glm::quat& rotation);
-  void SetRotationEuler(const glm::vec3& euler_degrees);
-  void SetScale(const glm::vec3& scale);
+  void SetPosition(const linalg::Vec3& position);
+  void SetRotation(const linalg::Quat& rotation);
+  void SetRotationEuler(const linalg::Vec3& euler_degrees);
+  void SetScale(const linalg::Vec3& scale);
   void SetScale(float uniform_scale);
 
-  [[nodiscard]] auto GetPosition() const -> const glm::vec3&;
-  [[nodiscard]] auto GetWorldPosition() const -> glm::vec3;
+  [[nodiscard]] auto GetPosition() const -> const linalg::Vec3&;
+  [[nodiscard]] auto GetWorldPosition() const -> linalg::Vec3;
 
   // Model attachment
   void SetModel(std::shared_ptr<Model> model);
