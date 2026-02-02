@@ -296,7 +296,20 @@ void VulkanCommandBuffer::BindShaders(const RHIShaderModule* vertex_shader,
   vkCmdSetRasterizationSamplesEXT(m_CommandBuffer, VK_SAMPLE_COUNT_1_BIT);
   vkCmdSetRasterizerDiscardEnable(m_CommandBuffer, VK_FALSE);
   vkCmdSetAlphaToCoverageEnableEXT(m_CommandBuffer, VK_FALSE);
-  vkCmdSetPolygonModeEXT(m_CommandBuffer, VK_POLYGON_MODE_FILL);
+  VkPolygonMode vk_polygon_mode = VK_POLYGON_MODE_FILL;
+  switch (m_PolygonMode) {
+    case PolygonMode::Fill:
+      vk_polygon_mode = VK_POLYGON_MODE_FILL;
+      break;
+    case PolygonMode::Line:
+      vk_polygon_mode = VK_POLYGON_MODE_LINE;
+      vkCmdSetLineWidth(m_CommandBuffer, 1.0F);
+      break;
+    case PolygonMode::Point:
+      vk_polygon_mode = VK_POLYGON_MODE_POINT;
+      break;
+  }
+  vkCmdSetPolygonModeEXT(m_CommandBuffer, vk_polygon_mode);
   vkCmdSetCullMode(m_CommandBuffer, VK_CULL_MODE_BACK_BIT);
   vkCmdSetFrontFace(m_CommandBuffer, VK_FRONT_FACE_COUNTER_CLOCKWISE);
   const VkBool32 depth_test_enable =
@@ -436,6 +449,11 @@ void VulkanCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
       break;
   }
   vkCmdSetPrimitiveTopology(m_CommandBuffer, vk_topology);
+}
+
+void VulkanCommandBuffer::SetPolygonMode(PolygonMode mode)
+{
+  m_PolygonMode = mode;
 }
 
 void VulkanCommandBuffer::BindDescriptorSet(

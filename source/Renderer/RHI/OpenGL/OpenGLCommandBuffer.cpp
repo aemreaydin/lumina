@@ -216,6 +216,21 @@ void OpenGLCommandBuffer::SetPrimitiveTopology(PrimitiveTopology topology)
   }
 }
 
+void OpenGLCommandBuffer::SetPolygonMode(PolygonMode mode)
+{
+  switch (mode) {
+    case PolygonMode::Fill:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      break;
+    case PolygonMode::Line:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      break;
+    case PolygonMode::Point:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+      break;
+  }
+}
+
 void OpenGLCommandBuffer::BindDescriptorSet(
     uint32_t set_index,
     const RHIDescriptorSet& descriptor_set,

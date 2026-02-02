@@ -3,8 +3,8 @@
 
 #include <cstdint>
 
-#include <linalg/vec.hpp>
 #include <linalg/mat4.hpp>
+#include <linalg/vec.hpp>
 
 #include "Renderer/Model/BoundingVolume.hpp"
 

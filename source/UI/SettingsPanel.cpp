@@ -72,6 +72,11 @@ auto SettingsPanel::GetPendingBackendSwitch() -> std::optional<RenderAPI>
   return pending;
 }
 
+auto SettingsPanel::IsWireframe() const -> bool
+{
+  return m_Wireframe;
+}
+
 void SettingsPanel::renderRendererSection()
 {
   if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -85,12 +90,6 @@ void SettingsPanel::renderRendererSection()
     }
 
     ImGui::Text("Validation: %s", m_ValidationEnabled ? "Enabled" : "Disabled");
-
-    bool vsync = true;
-    if (ImGui::Checkbox("VSync", &vsync)) {
-      // TODO: Apply vsync change
-    }
-
     ImGui::Text("Resolution: %u x %u", m_Width, m_Height);
   }
 }
@@ -140,15 +139,7 @@ void SettingsPanel::renderDebugSection()
     // Debug visualization toggles
     ImGui::Text("Visualization");
     ImGui::Indent();
-    if (ImGui::Checkbox("Wireframe", &m_Wireframe)) {
-      // TODO: Apply wireframe mode
-    }
-    if (ImGui::Checkbox("Bounding Boxes", &m_ShowBoundingBoxes)) {
-      // TODO: Apply bounding box visualization
-    }
-    if (ImGui::Checkbox("Normals", &m_ShowNormals)) {
-      // TODO: Apply normal visualization
-    }
+    ImGui::Checkbox("Wireframe", &m_Wireframe);
     ImGui::Unindent();
   }
 }

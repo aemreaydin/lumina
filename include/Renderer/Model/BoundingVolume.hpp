@@ -6,9 +6,9 @@
 #include <limits>
 #include <span>
 
-#include <linalg/vec.hpp>
 #include <linalg/mat4.hpp>
 #include <linalg/utility.hpp>
+#include <linalg/vec.hpp>
 
 struct Ray
 {
@@ -19,8 +19,12 @@ struct Ray
 // Axis-Aligned Bounding Box
 struct AABB
 {
-  linalg::Vec3 Min {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-  linalg::Vec3 Max {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+  linalg::Vec3 Min {std::numeric_limits<float>::max(),
+                    std::numeric_limits<float>::max(),
+                    std::numeric_limits<float>::max()};
+  linalg::Vec3 Max {std::numeric_limits<float>::lowest(),
+                    std::numeric_limits<float>::lowest(),
+                    std::numeric_limits<float>::lowest()};
 
   [[nodiscard]] auto GetCenter() const -> linalg::Vec3
   {
@@ -55,8 +59,12 @@ struct AABB
 
   void Reset()
   {
-    Min = linalg::Vec3{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-    Max = linalg::Vec3{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+    Min = linalg::Vec3 {std::numeric_limits<float>::max(),
+                        std::numeric_limits<float>::max(),
+                        std::numeric_limits<float>::max()};
+    Max = linalg::Vec3 {std::numeric_limits<float>::lowest(),
+                        std::numeric_limits<float>::lowest(),
+                        std::numeric_limits<float>::lowest()};
   }
 
   // Transform AABB by matrix (returns new, potentially larger AABB)

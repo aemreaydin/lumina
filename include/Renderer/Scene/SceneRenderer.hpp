@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include <linalg/vec.hpp>
 #include <linalg/mat4.hpp>
+#include <linalg/vec.hpp>
 
 #include "Renderer/RHI/RHIPipeline.hpp"
 #include "Renderer/ShaderCompiler.hpp"
@@ -50,6 +50,8 @@ public:
   void RenderScene(RHICommandBuffer& cmd, const Scene& scene);
   void RenderNode(RHICommandBuffer& cmd, const SceneNode& node);
 
+  void SetWireframe(bool wireframe);
+
   [[nodiscard]] auto GetSetLayout(const std::string& parameter_name) const
       -> std::shared_ptr<RHIDescriptorSetLayout>;
   [[nodiscard]] auto GetPipelineLayout() const
@@ -80,6 +82,8 @@ private:
   uint32_t m_NodeSetIndex {0};
   uint32_t m_NodeDynamicOffset {0};
   uint32_t m_NodeAlignment {256};
+
+  bool m_Wireframe {false};
 };
 
 #endif

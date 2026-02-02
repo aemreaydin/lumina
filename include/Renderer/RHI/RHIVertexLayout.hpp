@@ -29,6 +29,13 @@ enum class PrimitiveTopology : uint8_t
   PointList
 };
 
+enum class PolygonMode : uint8_t
+{
+  Fill,
+  Line,
+  Point
+};
+
 enum class IndexType : uint8_t
 {
   UInt16,

@@ -184,6 +184,16 @@ void RHIImGui::SetCurrentAPI(RenderAPI api)
   m_SettingsPanel->SetCurrentAPI(api);
 }
 
+void RHIImGui::SetValidationEnabled(bool enabled)
+{
+  m_SettingsPanel->SetValidationEnabled(enabled);
+}
+
+void RHIImGui::SetResolution(uint32_t width, uint32_t height)
+{
+  m_SettingsPanel->SetResolution(width, height);
+}
+
 auto RHIImGui::GetPendingBackendSwitch() -> std::optional<RenderAPI>
 {
   return m_SettingsPanel->GetPendingBackendSwitch();
@@ -197,4 +207,9 @@ auto RHIImGui::IsSettingsVisible() const -> bool
 auto RHIImGui::IsSceneHierarchyVisible() const -> bool
 {
   return m_ShowSceneHierarchy;
+}
+
+auto RHIImGui::IsWireframe() const -> bool
+{
+  return m_SettingsPanel->IsWireframe();
 }

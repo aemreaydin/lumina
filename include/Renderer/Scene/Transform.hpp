@@ -1,10 +1,10 @@
 #ifndef RENDERER_SCENE_TRANSFORM_HPP
 #define RENDERER_SCENE_TRANSFORM_HPP
 
-#include <linalg/vec.hpp>
 #include <linalg/mat3.hpp>
 #include <linalg/mat4.hpp>
 #include <linalg/quaternion.hpp>
+#include <linalg/vec.hpp>
 
 class Transform
 {

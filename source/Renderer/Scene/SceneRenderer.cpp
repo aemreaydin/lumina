@@ -32,10 +32,16 @@ void SceneRenderer::BeginFrame(const Camera& camera)
   m_NodeDynamicOffset = 0;
 }
 
+void SceneRenderer::SetWireframe(bool wireframe)
+{
+  m_Wireframe = wireframe;
+}
+
 void SceneRenderer::RenderScene(RHICommandBuffer& cmd, const Scene& scene)
 {
-  cmd.BindShaders(m_VertexShader.get(), m_FragmentShader.get());
   cmd.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
+  cmd.SetPolygonMode(m_Wireframe ? PolygonMode::Line : PolygonMode::Fill);
+  cmd.BindShaders(m_VertexShader.get(), m_FragmentShader.get());
 
   cmd.SetVertexInput(Vertex::GetLayout());
 
@@ -47,6 +53,9 @@ void SceneRenderer::RenderScene(RHICommandBuffer& cmd, const Scene& scene)
   for (auto* node : renderable_nodes) {
     RenderNode(cmd, *node);
   }
+
+  // Reset to fill so ImGui renders normally
+  // cmd.SetPolygonMode(PolygonMode::Fill);
 }
 
 void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
@@ -59,11 +68,22 @@ void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
   NodeUBO data {};
   data.Model = node.GetTransform().GetWorldMatrix();
   const auto normal_mat = node.GetTransform().GetNormalMatrix();
-  data.NormalMatrix = linalg::Mat4{
-      normal_mat(0, 0), normal_mat(0, 1), normal_mat(0, 2), 0.0F,
-      normal_mat(1, 0), normal_mat(1, 1), normal_mat(1, 2), 0.0F,
-      normal_mat(2, 0), normal_mat(2, 1), normal_mat(2, 2), 0.0F,
-      0.0F, 0.0F, 0.0F, 1.0F};
+  data.NormalMatrix = linalg::Mat4 {normal_mat(0, 0),
+                                    normal_mat(0, 1),
+                                    normal_mat(0, 2),
+                                    0.0F,
+                                    normal_mat(1, 0),
+                                    normal_mat(1, 1),
+                                    normal_mat(1, 2),
+                                    0.0F,
+                                    normal_mat(2, 0),
+                                    normal_mat(2, 1),
+                                    normal_mat(2, 2),
+                                    0.0F,
+                                    0.0F,
+                                    0.0F,
+                                    0.0F,
+                                    1.0F};
 
   m_NodeDynamicBuffer->Upload(&data, sizeof(NodeUBO), m_NodeDynamicOffset);
 

@@ -35,6 +35,7 @@ public:
   void BindIndexBuffer(const RHIBuffer& buffer) override;
   void SetVertexInput(const VertexInputLayout& layout) override;
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
+  void SetPolygonMode(PolygonMode mode) override;
   void BindDescriptorSet(
       uint32_t set_index,
       const RHIDescriptorSet& descriptor_set,

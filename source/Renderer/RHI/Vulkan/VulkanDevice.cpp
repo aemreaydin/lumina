@@ -482,7 +482,8 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
   queue_create_info.queueCount = 1;
   queue_create_info.pQueuePriorities = &queue_priority;
 
-  const VkPhysicalDeviceFeatures device_features = {};
+  VkPhysicalDeviceFeatures device_features = {};
+  device_features.fillModeNonSolid = VK_TRUE;
 
   // Enable shader object extension features
   VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_features = {};

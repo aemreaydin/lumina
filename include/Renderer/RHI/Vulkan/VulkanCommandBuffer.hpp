@@ -6,6 +6,7 @@
 #include <volk.h>
 
 #include "Renderer/RHI/RHICommandBuffer.hpp"
+#include "Renderer/RHI/RHIVertexLayout.hpp"
 #include "Renderer/RHI/RenderPassInfo.hpp"
 
 class VulkanDevice;
@@ -42,6 +43,7 @@ public:
   void BindIndexBuffer(const RHIBuffer& buffer) override;
   void SetVertexInput(const VertexInputLayout& layout) override;
   void SetPrimitiveTopology(PrimitiveTopology topology) override;
+  void SetPolygonMode(PolygonMode mode) override;
   void BindDescriptorSet(
       uint32_t set_index,
       const RHIDescriptorSet& descriptor_set,
@@ -64,6 +66,7 @@ private:
   bool m_Recording {false};
   bool m_InRenderPass {false};
   RenderPassInfo m_CurrentRenderPass {};
+  PolygonMode m_PolygonMode {PolygonMode::Fill};
 };
 
 #endif

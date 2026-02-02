@@ -73,7 +73,10 @@ public:
 
   void SetDistanceLimits(float min_distance, float max_distance);
 
-  [[nodiscard]] auto GetTarget() const -> const linalg::Vec3& { return m_Target; }
+  [[nodiscard]] auto GetTarget() const -> const linalg::Vec3&
+  {
+    return m_Target;
+  }
 
   [[nodiscard]] auto GetDistance() const -> float { return m_Distance; }
 

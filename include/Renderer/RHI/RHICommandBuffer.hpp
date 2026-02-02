@@ -29,6 +29,7 @@ public:
   virtual void BindIndexBuffer(const RHIBuffer& buffer) = 0;
   virtual void SetVertexInput(const VertexInputLayout& layout) = 0;
   virtual void SetPrimitiveTopology(PrimitiveTopology topology) = 0;
+  virtual void SetPolygonMode(PolygonMode mode) = 0;
   virtual void BindDescriptorSet(
       uint32_t set_index,
       const RHIDescriptorSet& descriptor_set,

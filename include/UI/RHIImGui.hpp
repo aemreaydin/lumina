@@ -35,10 +35,13 @@ public:
   void SetCamera(Camera& camera);
   void SetSelectedNode(SceneNode* node);
   void SetCurrentAPI(RenderAPI api);
+  void SetValidationEnabled(bool enabled);
+  void SetResolution(uint32_t width, uint32_t height);
   auto GetPendingBackendSwitch() -> std::optional<RenderAPI>;
 
   [[nodiscard]] auto IsSettingsVisible() const -> bool;
   [[nodiscard]] auto IsSceneHierarchyVisible() const -> bool;
+  [[nodiscard]] auto IsWireframe() const -> bool;
 
   RHIImGui(const RHIImGui&) = delete;
   RHIImGui(RHIImGui&&) = delete;

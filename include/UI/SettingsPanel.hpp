@@ -25,6 +25,8 @@ public:
   void SetCurrentAPI(RenderAPI api);
   auto GetPendingBackendSwitch() -> std::optional<RenderAPI>;
 
+  [[nodiscard]] auto IsWireframe() const -> bool;
+
 private:
   void renderRendererSection();
   void renderCameraSection();

@@ -40,6 +40,8 @@ void Application::Init()
   m_ImGui = RHIImGui::Create(*m_RHIDevice);
   m_ImGui->Init(*m_Window);
   m_ImGui->SetCurrentAPI(m_RendererConfig.API);
+  m_ImGui->SetValidationEnabled(m_RendererConfig.EnableValidation);
+  m_ImGui->SetResolution(m_Window->GetWidth(), m_Window->GetHeight());
 
   // Initialize timing
   m_StartTime = SDL_GetPerformanceCounter();
@@ -202,6 +204,9 @@ void Application::Run()
       m_LastFrameTime = SDL_GetPerformanceCounter();
       continue;
     }
+
+    // Update resolution (may change on window resize)
+    m_ImGui->SetResolution(m_Window->GetWidth(), m_Window->GetHeight());
 
     // Update game logic
     OnUpdate(delta_time);
