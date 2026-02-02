@@ -1,22 +1,14 @@
 #ifndef UI_SETTINGSPANEL_HPP
 #define UI_SETTINGSPANEL_HPP
 
-#include <cstdint>
 #include <optional>
 #include <string>
 
+#include "Core/PerformanceStats.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 class RHIDevice;
 class Camera;
-
-struct PerformanceStats
-{
-  float FrameTime = 0.0F;
-  float Fps = 0.0F;
-  uint32_t DrawCalls = 0;
-  uint64_t MemoryUsageMb = 0;
-};
 
 class SettingsPanel
 {

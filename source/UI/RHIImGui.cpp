@@ -164,6 +164,11 @@ void RHIImGui::ToggleSceneHierarchy()
                 m_ShowSceneHierarchy ? "shown" : "hidden");
 }
 
+void RHIImGui::UpdateStats(const PerformanceStats& stats)
+{
+  m_SettingsPanel->UpdateStats(stats);
+}
+
 void RHIImGui::SetCamera(Camera& camera)
 {
   m_SettingsPanel->SetCamera(&camera);

@@ -179,6 +179,10 @@ void Application::Run()
         / static_cast<float>(frequency);
     m_LastFrameTime = current_time;
 
+    // Update performance stats
+    m_PerfTracker.Update(delta_time);
+    m_ImGui->UpdateStats(m_PerfTracker.GetStats());
+
     // Reset input state for new frame
     Input::BeginFrame();
 

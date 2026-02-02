@@ -133,9 +133,6 @@ void SettingsPanel::renderDebugSection()
     ImGui::Indent();
     ImGui::Text("FPS: %.1f", m_Stats.Fps);
     ImGui::Text("Frame Time: %.2f ms", m_Stats.FrameTime * 1000.0F);
-    ImGui::Text("Draw Calls: %u", m_Stats.DrawCalls);
-    ImGui::Text("Memory: %llu MB",
-                static_cast<unsigned long long>(m_Stats.MemoryUsageMb));
     ImGui::Unindent();
 
     ImGui::Separator();

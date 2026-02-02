@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 
+#include "Core/PerformanceStats.hpp"
 #include "Renderer/RendererConfig.hpp"
 
 struct ImVec2;
@@ -30,6 +31,7 @@ public:
   void ToggleSettings();
   void ToggleSceneHierarchy();
 
+  void UpdateStats(const PerformanceStats& stats);
   void SetCamera(Camera& camera);
   void SetSelectedNode(SceneNode* node);
   void SetCurrentAPI(RenderAPI api);

@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "Core/PerformanceStats.hpp"
 #include "Renderer/RendererConfig.hpp"
 #include "Window.hpp"
 
@@ -52,6 +53,11 @@ protected:
     return m_RendererConfig;
   }
 
+  [[nodiscard]] auto GetStats() const -> const PerformanceStats&
+  {
+    return m_PerfTracker.GetStats();
+  }
+
   void SwitchBackend(RenderAPI new_api);
 
 private:
@@ -64,6 +70,7 @@ private:
   bool m_Running = true;
   uint64_t m_StartTime {0};
   uint64_t m_LastFrameTime {0};
+  PerformanceTracker m_PerfTracker;
 };
 
 auto CreateApplication() -> std::unique_ptr<Application>;
