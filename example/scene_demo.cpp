@@ -143,6 +143,7 @@ protected:
     auto& device = GetDevice();
     auto* cmd = device.GetCurrentCommandBuffer();
 
+    m_SceneRenderer->SetWireframe(GetImGui().IsWireframe());
     m_SceneRenderer->BeginFrame(m_Camera);
     m_SceneRenderer->RenderScene(*cmd, *m_Scene);
 
