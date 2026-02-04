@@ -96,53 +96,57 @@ void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
   m_InRenderPass = true;
 
   // Resolve color/depth images from either swapchain or render target
-  VkImage color_image = VK_NULL_HANDLE;
-  VkImageView color_view = VK_NULL_HANDLE;
+  std::vector<VkImage> color_images;
+  std::vector<VkImageView> color_views;
   VkImage depth_image = VK_NULL_HANDLE;
   VkImageView depth_view = VK_NULL_HANDLE;
 
   if (info.RenderTarget == nullptr) {
-    // Swapchain path
+    // Swapchain path — single color target
     m_IsSwapchainTarget = true;
     auto* swapchain = dynamic_cast<VulkanSwapchain*>(m_Device->GetSwapchain());
-    color_image = swapchain->GetCurrentImage();
-    color_view = swapchain->GetCurrentImageView();
+    color_images.push_back(swapchain->GetCurrentImage());
+    color_views.push_back(swapchain->GetCurrentImageView());
     if (info.DepthStencilAttachment != nullptr) {
       depth_image = swapchain->GetDepthImage();
       depth_view = swapchain->GetDepthImageView();
     }
   } else {
-    // Off-screen render target path
+    // Off-screen render target path — supports MRT
     m_IsSwapchainTarget = false;
     auto* rt = dynamic_cast<VulkanRenderTarget*>(info.RenderTarget);
-    color_image = rt->GetColorImage(0);
-    color_view = rt->GetColorImageView(0);
+    for (uint32_t i = 0; i < info.ColorAttachmentCount; ++i) {
+      color_images.push_back(rt->GetColorImage(i));
+      color_views.push_back(rt->GetColorImageView(i));
+    }
     if (info.DepthStencilAttachment != nullptr) {
       depth_image = rt->GetDepthImage();
       depth_view = rt->GetDepthImageView();
     }
   }
 
-  // Barriers
+  // Barriers — one per color image
   std::vector<VkImageMemoryBarrier> barriers;
   VkPipelineStageFlags dst_stage =
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-  VkImageMemoryBarrier color_barrier {};
-  color_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  color_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  color_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  color_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  color_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  color_barrier.image = color_image;
-  color_barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                    .baseMipLevel = 0,
-                                    .levelCount = 1,
-                                    .baseArrayLayer = 0,
-                                    .layerCount = 1};
-  color_barrier.srcAccessMask = 0;
-  color_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  barriers.push_back(color_barrier);
+  for (size_t i = 0; i < color_images.size(); ++i) {
+    VkImageMemoryBarrier color_barrier {};
+    color_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    color_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    color_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    color_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    color_barrier.image = color_images[i];
+    color_barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                      .baseMipLevel = 0,
+                                      .levelCount = 1,
+                                      .baseArrayLayer = 0,
+                                      .layerCount = 1};
+    color_barrier.srcAccessMask = 0;
+    color_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barriers.push_back(color_barrier);
+  }
 
   if (info.DepthStencilAttachment != nullptr && depth_image != VK_NULL_HANDLE) {
     VkImageMemoryBarrier depth_barrier {};
@@ -189,7 +193,7 @@ void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
 
     auto& att = color_attachment_infos[i];
     att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    att.imageView = color_view;  // MRT: updated when render targets support multiple textures
+    att.imageView = color_views[i];
     att.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     att.loadOp = ToVkLoadOp(info.ColorAttachments[i].ColorLoadOp);
     att.storeOp = info.ColorAttachments[i].ColorStoreOp == StoreOp::Store
@@ -241,15 +245,17 @@ void VulkanCommandBuffer::EndRenderPass()
   Logger::Trace("[Vulkan] End render pass");
   vkCmdEndRendering(m_CommandBuffer);
 
-  // Resolve the color image for the post-pass transition
-  VkImage color_image = VK_NULL_HANDLE;
+  // Collect all color images for post-pass transition
+  std::vector<VkImage> color_images;
   if (m_IsSwapchainTarget) {
     auto* swapchain = dynamic_cast<VulkanSwapchain*>(m_Device->GetSwapchain());
-    color_image = swapchain->GetCurrentImage();
+    color_images.push_back(swapchain->GetCurrentImage());
   } else if (m_CurrentRenderPass.RenderTarget != nullptr) {
     auto* rt =
         dynamic_cast<VulkanRenderTarget*>(m_CurrentRenderPass.RenderTarget);
-    color_image = rt->GetColorImage(0);
+    for (uint32_t i = 0; i < m_CurrentRenderPass.ColorAttachmentCount; ++i) {
+      color_images.push_back(rt->GetColorImage(i));
+    }
   }
 
   // Transition: swapchain -> PRESENT_SRC, off-screen -> SHADER_READ_ONLY
@@ -262,20 +268,24 @@ void VulkanCommandBuffer::EndRenderPass()
       ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
       : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-  VkImageMemoryBarrier barrier {};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  barrier.newLayout = new_layout;
-  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = color_image;
-  barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                              .baseMipLevel = 0,
-                              .levelCount = 1,
-                              .baseArrayLayer = 0,
-                              .layerCount = 1};
-  barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  barrier.dstAccessMask = dst_access;
+  std::vector<VkImageMemoryBarrier> barriers;
+  for (size_t i = 0; i < color_images.size(); ++i) {
+    VkImageMemoryBarrier barrier {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    barrier.newLayout = new_layout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = color_images[i];
+    barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                .baseMipLevel = 0,
+                                .levelCount = 1,
+                                .baseArrayLayer = 0,
+                                .layerCount = 1};
+    barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask = dst_access;
+    barriers.push_back(barrier);
+  }
 
   vkCmdPipelineBarrier(m_CommandBuffer,
                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -285,8 +295,8 @@ void VulkanCommandBuffer::EndRenderPass()
                        nullptr,
                        0,
                        nullptr,
-                       1,
-                       &barrier);
+                       static_cast<uint32_t>(barriers.size()),
+                       barriers.data());
 
   m_InRenderPass = false;
   m_IsSwapchainTarget = false;
@@ -365,23 +375,32 @@ void VulkanCommandBuffer::BindShaders(const RHIShaderModule* vertex_shader,
   };
   vkCmdSetScissorWithCount(m_CommandBuffer, 1, &scissor);
 
-  // Color blend state
-  VkColorBlendEquationEXT color_blend_equation {};
-  color_blend_equation.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-  color_blend_equation.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-  color_blend_equation.colorBlendOp = VK_BLEND_OP_ADD;
-  color_blend_equation.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-  color_blend_equation.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-  color_blend_equation.alphaBlendOp = VK_BLEND_OP_ADD;
-  vkCmdSetColorBlendEquationEXT(m_CommandBuffer, 0, 1, &color_blend_equation);
+  // Color blend state — set for all color attachments
+  const uint32_t attachment_count = m_CurrentRenderPass.ColorAttachmentCount;
 
-  const VkBool32 color_blend_enable = VK_FALSE;
-  vkCmdSetColorBlendEnableEXT(m_CommandBuffer, 0, 1, &color_blend_enable);
+  std::vector<VkColorBlendEquationEXT> color_blend_equations(attachment_count);
+  for (auto& eq : color_blend_equations) {
+    eq.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    eq.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    eq.colorBlendOp = VK_BLEND_OP_ADD;
+    eq.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    eq.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    eq.alphaBlendOp = VK_BLEND_OP_ADD;
+  }
+  vkCmdSetColorBlendEquationEXT(
+      m_CommandBuffer, 0, attachment_count, color_blend_equations.data());
+
+  std::vector<VkBool32> color_blend_enables(attachment_count, VK_FALSE);
+  vkCmdSetColorBlendEnableEXT(
+      m_CommandBuffer, 0, attachment_count, color_blend_enables.data());
 
   const VkColorComponentFlags color_write_mask = VK_COLOR_COMPONENT_R_BIT
       | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
       | VK_COLOR_COMPONENT_A_BIT;
-  vkCmdSetColorWriteMaskEXT(m_CommandBuffer, 0, 1, &color_write_mask);
+  std::vector<VkColorComponentFlags> color_write_masks(
+      attachment_count, color_write_mask);
+  vkCmdSetColorWriteMaskEXT(
+      m_CommandBuffer, 0, attachment_count, color_write_masks.data());
 
   Logger::Trace("[Vulkan] Bound shaders");
 }
