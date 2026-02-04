@@ -63,8 +63,7 @@ float4 fragmentMain(VertexOutput input) : SV_Target
         {
             float3 hdr = textures.litScene.Sample(uv).rgb;
             float3 mapped = ACESFilmic(hdr);
-            float3 gamma = pow(mapped, float3(1.0 / 2.2));
-            return float4(gamma, 1.0);
+            return float4(mapped, 1.0);
         }
         case 1:
         {

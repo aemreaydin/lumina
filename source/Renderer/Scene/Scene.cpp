@@ -174,7 +174,7 @@ auto Scene::GetPointLights() const -> std::vector<PointLightData>
       [&lights](const SceneNode& node) -> void
       {
         if (node.HasLight()
-            && node.GetLight()->LightType == LightComponent::Type::Point)
+            && node.GetLight()->LightType == LightComponent::Type::Point && node.IsVisibleInHierarchy())
         {
           const auto& lc = *node.GetLight();
           PointLightData data {};

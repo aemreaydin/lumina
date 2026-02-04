@@ -37,6 +37,7 @@ struct ShaderParameterInfo
 struct ShaderDescriptorSetInfo
 {
   uint32_t SetIndex {0};
+  std::string BlockName;
   std::vector<ShaderParameterInfo> Parameters;
 };
 

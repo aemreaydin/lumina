@@ -101,12 +101,31 @@ protected:
 
     auto* node2 = m_Scene->CreateNode("Coffee Table");
     node2->SetModel(coffee_table);
-    node2->SetPosition(linalg::Vec3 {5.0F, 0.0F, 0.0F});
+    node2->SetPosition(linalg::Vec3 {0.0F, 0.0F, -3.0F});
     node2->SetScale(6.0F);
 
     auto* node3 = m_Scene->CreateNode("Chair");
     node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, 0.0F});
+    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, -3.0F});
+    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, -90.0F});
+    node3->SetScale(3.0F);
+
+    auto* node4 = m_Scene->CreateNode("Chair");
+    node3->SetModel(chair);
+    node3->SetPosition(linalg::Vec3 {5.0F, 0.0F, -3.0F});
+    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 90.0F});
+    node3->SetScale(3.0F);
+
+    auto* node5 = m_Scene->CreateNode("Chair");
+    node3->SetModel(chair);
+    node3->SetPosition(linalg::Vec3 {0.0F, 5.0F, -3.0F});
+    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+    node3->SetScale(3.0F);
+
+    auto* node6 = m_Scene->CreateNode("Chair");
+    node3->SetModel(chair);
+    node3->SetPosition(linalg::Vec3 {0.0F, -5.0F, -3.0F});
+    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 180.0F});
     node3->SetScale(3.0F);
 
     setupLights();
@@ -220,13 +239,13 @@ private:
   void setupLights()
   {
     // Directional light (sun)
-    auto* sun = m_Scene->CreateNode("Sun");
+    m_SunNode = m_Scene->CreateNode("Sun");
     LightComponent sun_light;
     sun_light.LightType = LightComponent::Type::Directional;
     sun_light.Direction = linalg::Vec3 {-0.5F, -1.0F, -0.3F};
     sun_light.Color = linalg::Vec3 {1.0F, 0.95F, 0.9F};
     sun_light.Intensity = 2.0F;
-    sun->SetLight(sun_light);
+    m_SunNode->SetLight(sun_light);
 
     // Red point light
     auto* red_light = m_Scene->CreateNode("Red Light");
@@ -237,6 +256,7 @@ private:
     red.Intensity = 3.0F;
     red.Radius = 15.0F;
     red_light->SetLight(red);
+    m_PointLightNodes.push_back(red_light);
 
     // Blue point light
     auto* blue_light = m_Scene->CreateNode("Blue Light");
@@ -247,6 +267,7 @@ private:
     blue.Intensity = 3.0F;
     blue.Radius = 15.0F;
     blue_light->SetLight(blue);
+    m_PointLightNodes.push_back(blue_light);
 
     // White point light
     auto* white_light = m_Scene->CreateNode("White Light");
@@ -257,6 +278,7 @@ private:
     white.Intensity = 2.0F;
     white.Radius = 20.0F;
     white_light->SetLight(white);
+    m_PointLightNodes.push_back(white_light);
   }
 
   void setupLightingShader()
@@ -609,11 +631,75 @@ private:
       ImGui::EndCombo();
     }
 
-    auto point_lights = m_Scene->GetPointLights();
-    ImGui::Text("Point lights: %d", static_cast<int>(point_lights.size()));
-    auto dir = m_Scene->GetDirectionalLight();
-    ImGui::Text("Directional light: %s", dir ? "Yes" : "No");
     ImGui::Text("Keys: 1-7 modes, G grid");
+    ImGui::Separator();
+
+    // Directional light controls
+    if (m_SunNode != nullptr && m_SunNode->HasLight()) {
+      auto lc = *m_SunNode->GetLight();
+      if (ImGui::CollapsingHeader("Directional Light",
+                                  ImGuiTreeNodeFlags_DefaultOpen))
+      {
+        float dir[3] = {lc.Direction.x(), lc.Direction.y(), lc.Direction.z()};
+        float col[3] = {lc.Color.x(), lc.Color.y(), lc.Color.z()};
+        bool changed = false;
+        changed |= ImGui::SliderFloat3("Direction", dir, -1.0F, 1.0F);
+        changed |= ImGui::ColorEdit3("Color##dir", col);
+        changed |= ImGui::SliderFloat("Intensity##dir", &lc.Intensity,
+                                      0.0F, 10.0F);
+        if (changed) {
+          lc.Direction = linalg::Vec3 {dir[0], dir[1], dir[2]};
+          lc.Color = linalg::Vec3 {col[0], col[1], col[2]};
+          m_SunNode->SetLight(lc);
+        }
+      }
+    }
+
+    // Point light controls
+    for (size_t i = 0; i < m_PointLightNodes.size(); ++i) {
+      auto* node = m_PointLightNodes[i];
+      if (node == nullptr || !node->HasLight()) {
+        continue;
+      }
+      auto lc = *node->GetLight();
+      auto pos = node->GetPosition();
+
+      std::string header = node->GetName();
+      if (ImGui::CollapsingHeader(header.c_str())) {
+        ImGui::PushID(static_cast<int>(i));
+        float p[3] = {pos.x(), pos.y(), pos.z()};
+        float col[3] = {lc.Color.x(), lc.Color.y(), lc.Color.z()};
+        bool changed = false;
+        changed |= ImGui::SliderFloat3("Position", p, -20.0F, 20.0F);
+        changed |= ImGui::ColorEdit3("Color", col);
+        changed |= ImGui::SliderFloat("Intensity", &lc.Intensity,
+                                      0.0F, 10.0F);
+        changed |= ImGui::SliderFloat("Radius", &lc.Radius, 1.0F, 50.0F);
+        if (changed) {
+          node->SetPosition(linalg::Vec3 {p[0], p[1], p[2]});
+          lc.Color = linalg::Vec3 {col[0], col[1], col[2]};
+          node->SetLight(lc);
+        }
+        ImGui::PopID();
+      }
+    }
+
+    ImGui::End();
+
+    // Overlay showing current mode in top-left corner
+    auto* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(
+        ImVec2(viewport->Size.x * 0.5F, 10), ImGuiCond_Always,
+        ImVec2(0.5F, 0.0F));
+    ImGui::SetNextWindowBgAlpha(0.5F);
+    if (ImGui::Begin("##ModeOverlay", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+                         | ImGuiWindowFlags_AlwaysAutoResize
+                         | ImGuiWindowFlags_NoFocusOnAppearing
+                         | ImGuiWindowFlags_NoNav))
+    {
+      ImGui::Text("Mode: %s", names[m_DisplayMode]);
+    }
     ImGui::End();
 
     if (m_ShowGrid) {
@@ -673,6 +759,10 @@ private:
   std::unique_ptr<RHIBuffer> m_CompositeParamsBuffer;
   std::unique_ptr<RHIDescriptorSet> m_CompositeParamsDescriptorSet;
   std::unique_ptr<RHIDescriptorSet> m_CompositeTextureDescriptorSet;
+
+  // Light nodes
+  SceneNode* m_SunNode {nullptr};
+  std::vector<SceneNode*> m_PointLightNodes;
 
   // Display state
   int m_DisplayMode {0};

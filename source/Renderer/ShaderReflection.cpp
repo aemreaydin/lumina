@@ -102,6 +102,10 @@ auto CreatePipelineLayoutFromReflection(RHIDevice& device,
       result.ParameterSetIndex[param.Name] = set.SetIndex;
     }
 
+    if (!set.BlockName.empty()) {
+      result.ParameterSetIndex[set.BlockName] = set.SetIndex;
+    }
+
     if (!layout_desc.Bindings.empty()) {
       auto layout = device.CreateDescriptorSetLayout(layout_desc);
 

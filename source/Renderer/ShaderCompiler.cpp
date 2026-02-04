@@ -90,6 +90,7 @@ static void ReflectParameterBlock(
 
   auto& set_info = set_map[set];
   set_info.SetIndex = set;
+  set_info.BlockName = param->getName();
 
   auto* element_type = type_layout->getElementTypeLayout();
   if (element_type == nullptr) {
