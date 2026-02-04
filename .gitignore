@@ -8,3 +8,4 @@ prefix/
 CMakeLists.txt.user
 compile_commands.json
 .task/
+.worktrees/
