@@ -167,6 +167,26 @@ auto SceneNode::HasModel() const -> bool
   return m_Model != nullptr;
 }
 
+void SceneNode::SetLight(const LightComponent& light)
+{
+  m_Light = light;
+}
+
+void SceneNode::ClearLight()
+{
+  m_Light.reset();
+}
+
+auto SceneNode::GetLight() const -> const std::optional<LightComponent>&
+{
+  return m_Light;
+}
+
+auto SceneNode::HasLight() const -> bool
+{
+  return m_Light.has_value();
+}
+
 void SceneNode::SetName(const std::string& name)
 {
   m_Name = name;

@@ -3,10 +3,12 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "Renderer/Model/BoundingVolume.hpp"
+#include "Renderer/Scene/LightData.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
 
 class Model;
@@ -53,6 +55,11 @@ public:
 
   // Get all visible nodes with models (for rendering)
   [[nodiscard]] auto GetRenderableNodes() const -> std::vector<SceneNode*>;
+
+  // Light queries
+  [[nodiscard]] auto GetPointLights() const -> std::vector<PointLightData>;
+  [[nodiscard]] auto GetDirectionalLight() const
+      -> std::optional<DirectionalLightData>;
 
   // Statistics
   [[nodiscard]] auto GetNodeCount() const -> size_t;

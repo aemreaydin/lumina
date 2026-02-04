@@ -1,7 +1,9 @@
 #ifndef RENDERER_SCENE_SCENENODE_HPP
 #define RENDERER_SCENE_SCENENODE_HPP
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -9,6 +11,16 @@
 #include "Renderer/Scene/Transform.hpp"
 
 class Model;
+
+struct LightComponent
+{
+  enum class Type : uint8_t { Point, Directional };
+  Type LightType = Type::Point;
+  linalg::Vec3 Color {1.0F, 1.0F, 1.0F};
+  float Intensity = 1.0F;
+  float Radius = 10.0F;
+  linalg::Vec3 Direction {0.0F, -1.0F, 0.0F};
+};
 
 class SceneNode
 {
@@ -55,6 +67,12 @@ public:
   [[nodiscard]] auto GetModel() const -> std::shared_ptr<Model>;
   [[nodiscard]] auto HasModel() const -> bool;
 
+  // Light component
+  void SetLight(const LightComponent& light);
+  void ClearLight();
+  [[nodiscard]] auto GetLight() const -> const std::optional<LightComponent>&;
+  [[nodiscard]] auto HasLight() const -> bool;
+
   // Node properties
   void SetName(const std::string& name);
   [[nodiscard]] auto GetName() const -> const std::string&;
@@ -82,6 +100,7 @@ private:
   std::vector<std::unique_ptr<SceneNode>> m_Children;
 
   std::shared_ptr<Model> m_Model;
+  std::optional<LightComponent> m_Light;
 
   bool m_Visible {true};
   bool m_Enabled {true};

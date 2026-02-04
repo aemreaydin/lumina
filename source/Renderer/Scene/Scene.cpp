@@ -167,6 +167,48 @@ auto Scene::MakeUniqueName(const std::string& name) const -> std::string
   return candidate;
 }
 
+auto Scene::GetPointLights() const -> std::vector<PointLightData>
+{
+  std::vector<PointLightData> lights;
+  ForEachNode(
+      [&lights](const SceneNode& node) -> void
+      {
+        if (node.HasLight()
+            && node.GetLight()->LightType == LightComponent::Type::Point)
+        {
+          const auto& lc = *node.GetLight();
+          PointLightData data {};
+          data.Position = node.GetWorldPosition();
+          data.Radius = lc.Radius;
+          data.Color = lc.Color;
+          data.Intensity = lc.Intensity;
+          lights.push_back(data);
+        }
+      });
+  return lights;
+}
+
+auto Scene::GetDirectionalLight() const -> std::optional<DirectionalLightData>
+{
+  std::optional<DirectionalLightData> result;
+  ForEachNode(
+      [&result](const SceneNode& node) -> void
+      {
+        if (!result && node.HasLight()
+            && node.GetLight()->LightType
+                == LightComponent::Type::Directional)
+        {
+          const auto& lc = *node.GetLight();
+          DirectionalLightData data {};
+          data.Direction = lc.Direction;
+          data.Intensity = lc.Intensity;
+          data.Color = lc.Color;
+          result = data;
+        }
+      });
+  return result;
+}
+
 auto Scene::count_nodes(const SceneNode& node) const -> size_t
 {
   size_t count = 1;
