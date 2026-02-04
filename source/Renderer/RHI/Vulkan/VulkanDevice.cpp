@@ -16,6 +16,7 @@
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
 #include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
+#include "Renderer/RHI/Vulkan/VulkanRenderTarget.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSampler.hpp"
 #include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
 #include "Renderer/RHI/Vulkan/VulkanTexture.hpp"
@@ -251,23 +252,6 @@ void VulkanDevice::BeginFrame()
   m_Swapchain->AcquireNextImage(frame_data.ImageAvailableSemaphore);
 
   frame_data.CommandBuffer.Begin();
-
-  DepthStencilInfo depth_stencil {};
-  depth_stencil.DepthLoadOp = LoadOp::Clear;
-  depth_stencil.DepthStoreOp = StoreOp::DontCare;
-  depth_stencil.ClearDepthStencil.Depth = 1.0F;
-
-  RenderPassInfo render_pass {};
-  render_pass.ColorAttachment.ColorLoadOp = LoadOp::Clear;
-  render_pass.ColorAttachment.ClearColor = {
-      .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
-  if (m_DepthEnabled) {
-    render_pass.DepthStencilAttachment = &depth_stencil;
-  }
-  render_pass.Width = m_Swapchain->GetWidth();
-  render_pass.Height = m_Swapchain->GetHeight();
-
-  frame_data.CommandBuffer.BeginRenderPass(*m_Swapchain, render_pass);
 }
 
 void VulkanDevice::EndFrame()
@@ -279,7 +263,6 @@ void VulkanDevice::EndFrame()
   Logger::Trace("[Vulkan] End frame {}", m_CurrentFrameIndex);
 
   auto& frame_data = m_FrameData.at(m_CurrentFrameIndex);
-  frame_data.CommandBuffer.EndRenderPass(*m_Swapchain);
   frame_data.CommandBuffer.End();
 
   const VkPipelineStageFlags wait_stage_mask =
@@ -351,7 +334,7 @@ void VulkanDevice::Present()
   Logger::Trace("[Vulkan] Advanced to frame {}", m_CurrentFrameIndex);
 }
 
-auto VulkanDevice::GetSwapchain() -> RHISwapchain*
+auto VulkanDevice::GetSwapchain() const -> RHISwapchain*
 {
   return m_Swapchain.get();
 }
@@ -485,8 +468,13 @@ void VulkanDevice::create_logical_device(VkSurfaceKHR surface)
   VkPhysicalDeviceFeatures device_features = {};
   device_features.fillModeNonSolid = VK_TRUE;
 
-  // Enable shader object extension features
+  VkPhysicalDeviceVulkan11Features vulkan11_features = {};
+  vulkan11_features.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  vulkan11_features.shaderDrawParameters = VK_TRUE;
+
   VkPhysicalDeviceShaderObjectFeaturesEXT shader_object_features = {};
+  shader_object_features.pNext = &vulkan11_features;
   shader_object_features.sType =
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT;
   shader_object_features.shaderObject = VK_TRUE;
@@ -638,6 +626,12 @@ void VulkanDevice::setup_frame_data()
     frame_data.CommandPool = create_command_pool();
     frame_data.CommandBuffer.Allocate(*this, frame_data.CommandPool);
   }
+}
+
+auto VulkanDevice::CreateRenderTarget(const RenderTargetDesc& desc)
+    -> std::unique_ptr<RHIRenderTarget>
+{
+  return std::make_unique<VulkanRenderTarget>(*this, desc);
 }
 
 auto VulkanDevice::CreateBuffer(const BufferDesc& desc)

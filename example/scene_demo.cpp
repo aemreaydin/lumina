@@ -29,7 +29,8 @@ protected:
 
     m_AssetManager = std::make_unique<AssetManager>(GetDevice());
 
-    m_SceneRenderer = std::make_unique<SceneRenderer>(GetDevice());
+    m_SceneRenderer =
+        std::make_unique<SceneRenderer>(GetDevice(), GetRendererConfig().API);
 
     m_AssetManager->SetMaterialDescriptorSetLayout(
         m_SceneRenderer->GetSetLayout("material"));

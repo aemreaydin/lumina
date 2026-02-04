@@ -52,22 +52,21 @@ protected:
     m_PipelineLayout =
         GetDevice().CreatePipelineLayout({m_DescriptorSetLayout});
 
-    const auto shader_sources =
-        ShaderCompiler::Compile("shaders/texture.slang");
+    const auto shader_sources = ShaderCompiler::Compile(
+        "shaders/texture.slang", GetRendererConfig().API);
 
-    const auto& vertex_spirv = shader_sources.Sources.at(ShaderType::Vertex);
     ShaderModuleDesc vertex_desc {};
     vertex_desc.Stage = ShaderStage::Vertex;
-    vertex_desc.SPIRVCode = vertex_spirv;
+    vertex_desc.SPIRVCode = shader_sources.GetSPIRV(ShaderType::Vertex);
+    vertex_desc.GLSLCode = shader_sources.GetGLSL(ShaderType::Vertex);
     vertex_desc.EntryPoint = "vertexMain";
     vertex_desc.SetLayouts = {m_DescriptorSetLayout};
     m_VertexShader = GetDevice().CreateShaderModule(vertex_desc);
 
-    const auto& fragment_spirv =
-        shader_sources.Sources.at(ShaderType::Fragment);
     ShaderModuleDesc fragment_desc {};
     fragment_desc.Stage = ShaderStage::Fragment;
-    fragment_desc.SPIRVCode = fragment_spirv;
+    fragment_desc.SPIRVCode = shader_sources.GetSPIRV(ShaderType::Fragment);
+    fragment_desc.GLSLCode = shader_sources.GetGLSL(ShaderType::Fragment);
     fragment_desc.EntryPoint = "fragmentMain";
     fragment_desc.SetLayouts = {m_DescriptorSetLayout};
     m_FragmentShader = GetDevice().CreateShaderModule(fragment_desc);

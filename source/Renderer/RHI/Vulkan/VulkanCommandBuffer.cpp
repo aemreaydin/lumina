@@ -9,6 +9,7 @@
 #include "Renderer/RHI/Vulkan/VulkanDescriptorSet.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanPipelineLayout.hpp"
+#include "Renderer/RHI/Vulkan/VulkanRenderTarget.hpp"
 #include "Renderer/RHI/Vulkan/VulkanShaderModule.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
 #include "Renderer/RHI/Vulkan/VulkanUtils.hpp"
@@ -16,6 +17,8 @@
 void VulkanCommandBuffer::Allocate(const VulkanDevice& device,
                                    VkCommandPool pool)
 {
+  m_Device = &device;
+
   VkCommandBufferAllocateInfo alloc_info = {};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = pool;
@@ -71,8 +74,20 @@ void VulkanCommandBuffer::End()
   Logger::Trace("[Vulkan] End command buffer recording");
 }
 
-void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
-                                          const RenderPassInfo& info)
+static auto ToVkLoadOp(LoadOp op) -> VkAttachmentLoadOp
+{
+  switch (op) {
+    case LoadOp::Load:
+      return VK_ATTACHMENT_LOAD_OP_LOAD;
+    case LoadOp::Clear:
+      return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    case LoadOp::DontCare:
+      return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  }
+  return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+}
+
+void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
 {
   Logger::Trace("[Vulkan] Begin render pass ({}x{}) with dynamic rendering",
                 info.Width,
@@ -80,7 +95,38 @@ void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
   m_CurrentRenderPass = info;
   m_InRenderPass = true;
 
+  // Resolve color/depth images from either swapchain or render target
+  VkImage color_image = VK_NULL_HANDLE;
+  VkImageView color_view = VK_NULL_HANDLE;
+  VkImage depth_image = VK_NULL_HANDLE;
+  VkImageView depth_view = VK_NULL_HANDLE;
+
+  if (info.RenderTarget == nullptr) {
+    // Swapchain path
+    m_IsSwapchainTarget = true;
+    auto* swapchain = dynamic_cast<VulkanSwapchain*>(m_Device->GetSwapchain());
+    color_image = swapchain->GetCurrentImage();
+    color_view = swapchain->GetCurrentImageView();
+    if (info.DepthStencilAttachment != nullptr) {
+      depth_image = swapchain->GetDepthImage();
+      depth_view = swapchain->GetDepthImageView();
+    }
+  } else {
+    // Off-screen render target path
+    m_IsSwapchainTarget = false;
+    auto* rt = dynamic_cast<VulkanRenderTarget*>(info.RenderTarget);
+    color_image = rt->GetColorImage();
+    color_view = rt->GetColorImageView();
+    if (info.DepthStencilAttachment != nullptr) {
+      depth_image = rt->GetDepthImage();
+      depth_view = rt->GetDepthImageView();
+    }
+  }
+
+  // Barriers
   std::vector<VkImageMemoryBarrier> barriers;
+  VkPipelineStageFlags dst_stage =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
   VkImageMemoryBarrier color_barrier {};
   color_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -88,32 +134,29 @@ void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
   color_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   color_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   color_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  color_barrier.image = swapchain.GetCurrentImage();
-  color_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  color_barrier.subresourceRange.baseMipLevel = 0;
-  color_barrier.subresourceRange.levelCount = 1;
-  color_barrier.subresourceRange.baseArrayLayer = 0;
-  color_barrier.subresourceRange.layerCount = 1;
+  color_barrier.image = color_image;
+  color_barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                    .baseMipLevel = 0,
+                                    .levelCount = 1,
+                                    .baseArrayLayer = 0,
+                                    .layerCount = 1};
   color_barrier.srcAccessMask = 0;
   color_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
   barriers.push_back(color_barrier);
 
-  VkPipelineStageFlags dst_stage =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-  if (info.DepthStencilAttachment != nullptr) {
+  if (info.DepthStencilAttachment != nullptr && depth_image != VK_NULL_HANDLE) {
     VkImageMemoryBarrier depth_barrier {};
     depth_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     depth_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depth_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depth_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     depth_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    depth_barrier.image = swapchain.GetDepthImage();
-    depth_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    depth_barrier.subresourceRange.baseMipLevel = 0;
-    depth_barrier.subresourceRange.levelCount = 1;
-    depth_barrier.subresourceRange.baseArrayLayer = 0;
-    depth_barrier.subresourceRange.layerCount = 1;
+    depth_barrier.image = depth_image;
+    depth_barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                                      .baseMipLevel = 0,
+                                      .levelCount = 1,
+                                      .baseArrayLayer = 0,
+                                      .layerCount = 1};
     depth_barrier.srcAccessMask = 0;
     depth_barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     barriers.push_back(depth_barrier);
@@ -131,57 +174,35 @@ void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
                        static_cast<uint32_t>(barriers.size()),
                        barriers.data());
 
+  // Color attachment
   VkClearValue clear_value {};
   if (info.ColorAttachment.ColorLoadOp == LoadOp::Clear) {
-    const auto& clear = info.ColorAttachment.ClearColor;
-    clear_value.color.float32[0] = clear.R;
-    clear_value.color.float32[1] = clear.G;
-    clear_value.color.float32[2] = clear.B;
-    clear_value.color.float32[3] = clear.A;
-  }
-
-  VkAttachmentLoadOp load_op {};
-  switch (info.ColorAttachment.ColorLoadOp) {
-    case LoadOp::Load:
-      load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
-      break;
-    case LoadOp::Clear:
-      load_op = VK_ATTACHMENT_LOAD_OP_CLEAR;
-      break;
-    case LoadOp::DontCare:
-      load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      break;
+    const auto& c = info.ColorAttachment.ClearColor;
+    clear_value.color.float32[0] = c.R;
+    clear_value.color.float32[1] = c.G;
+    clear_value.color.float32[2] = c.B;
+    clear_value.color.float32[3] = c.A;
   }
 
   VkRenderingAttachmentInfo color_attachment {};
   color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-  color_attachment.imageView = swapchain.GetCurrentImageView();
+  color_attachment.imageView = color_view;
   color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  color_attachment.loadOp = load_op;
+  color_attachment.loadOp = ToVkLoadOp(info.ColorAttachment.ColorLoadOp);
   color_attachment.storeOp = info.ColorAttachment.ColorStoreOp == StoreOp::Store
       ? VK_ATTACHMENT_STORE_OP_STORE
       : VK_ATTACHMENT_STORE_OP_DONT_CARE;
   color_attachment.clearValue = clear_value;
 
+  // Depth attachment
   VkRenderingAttachmentInfo depth_attachment {};
-  if (info.DepthStencilAttachment != nullptr) {
+  if (info.DepthStencilAttachment != nullptr && depth_view != VK_NULL_HANDLE) {
     depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-    depth_attachment.imageView = swapchain.GetDepthImageView();
+    depth_attachment.imageView = depth_view;
     depth_attachment.imageLayout =
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    switch (info.DepthStencilAttachment->DepthLoadOp) {
-      case LoadOp::Load:
-        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-        break;
-      case LoadOp::Clear:
-        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        break;
-      case LoadOp::DontCare:
-        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        break;
-    }
-
+    depth_attachment.loadOp =
+        ToVkLoadOp(info.DepthStencilAttachment->DepthLoadOp);
     depth_attachment.storeOp =
         info.DepthStencilAttachment->DepthStoreOp == StoreOp::Store
         ? VK_ATTACHMENT_STORE_OP_STORE
@@ -200,14 +221,14 @@ void VulkanCommandBuffer::BeginRenderPass(const VulkanSwapchain& swapchain,
   rendering_info.layerCount = 1;
   rendering_info.colorAttachmentCount = 1;
   rendering_info.pColorAttachments = &color_attachment;
-  if (info.DepthStencilAttachment != nullptr) {
+  if (info.DepthStencilAttachment != nullptr && depth_view != VK_NULL_HANDLE) {
     rendering_info.pDepthAttachment = &depth_attachment;
   }
 
   vkCmdBeginRendering(m_CommandBuffer, &rendering_info);
 }
 
-void VulkanCommandBuffer::EndRenderPass(const VulkanSwapchain& swapchain)
+void VulkanCommandBuffer::EndRenderPass()
 {
   if (!m_InRenderPass) {
     return;
@@ -216,24 +237,45 @@ void VulkanCommandBuffer::EndRenderPass(const VulkanSwapchain& swapchain)
   Logger::Trace("[Vulkan] End render pass");
   vkCmdEndRendering(m_CommandBuffer);
 
-  VkImageMemoryBarrier barrier = {};
+  // Resolve the color image for the post-pass transition
+  VkImage color_image = VK_NULL_HANDLE;
+  if (m_IsSwapchainTarget) {
+    auto* swapchain = dynamic_cast<VulkanSwapchain*>(m_Device->GetSwapchain());
+    color_image = swapchain->GetCurrentImage();
+  } else if (m_CurrentRenderPass.RenderTarget != nullptr) {
+    auto* rt =
+        dynamic_cast<VulkanRenderTarget*>(m_CurrentRenderPass.RenderTarget);
+    color_image = rt->GetColorImage();
+  }
+
+  // Transition: swapchain -> PRESENT_SRC, off-screen -> SHADER_READ_ONLY
+  VkImageLayout new_layout = m_IsSwapchainTarget
+      ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  VkAccessFlags dst_access =
+      m_IsSwapchainTarget ? VkAccessFlags {0} : VK_ACCESS_SHADER_READ_BIT;
+  VkPipelineStageFlags dst_stage = m_IsSwapchainTarget
+      ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+      : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+  VkImageMemoryBarrier barrier {};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  barrier.newLayout = new_layout;
   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.image = swapchain.GetCurrentImage();
-  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  barrier.subresourceRange.baseMipLevel = 0;
-  barrier.subresourceRange.levelCount = 1;
-  barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.layerCount = 1;
+  barrier.image = color_image;
+  barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                              .baseMipLevel = 0,
+                              .levelCount = 1,
+                              .baseArrayLayer = 0,
+                              .layerCount = 1};
   barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  barrier.dstAccessMask = 0;
+  barrier.dstAccessMask = dst_access;
 
   vkCmdPipelineBarrier(m_CommandBuffer,
                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                       dst_stage,
                        0,
                        0,
                        nullptr,
@@ -243,31 +285,8 @@ void VulkanCommandBuffer::EndRenderPass(const VulkanSwapchain& swapchain)
                        &barrier);
 
   m_InRenderPass = false;
+  m_IsSwapchainTarget = false;
   m_CurrentRenderPass = {};
-}
-
-void VulkanCommandBuffer::ClearColor(
-    const VulkanSwapchain& swapchain, float r, float g, float b, float a)
-{
-  VkClearColorValue clear_color = {};
-  clear_color.float32[0] = r;
-  clear_color.float32[1] = g;
-  clear_color.float32[2] = b;
-  clear_color.float32[3] = a;
-
-  VkImageSubresourceRange range = {};
-  range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  range.baseMipLevel = 0;
-  range.levelCount = 1;
-  range.baseArrayLayer = 0;
-  range.layerCount = 1;
-
-  vkCmdClearColorImage(m_CommandBuffer,
-                       swapchain.GetCurrentImage(),
-                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                       &clear_color,
-                       1,
-                       &range);
 }
 
 auto VulkanCommandBuffer::GetHandle() const -> VkCommandBuffer

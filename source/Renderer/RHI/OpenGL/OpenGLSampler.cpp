@@ -52,14 +52,23 @@ OpenGLSampler::OpenGLSampler(const SamplerDesc& desc)
     throw std::runtime_error("Failed to create OpenGL sampler");
   }
 
-  // Minification filter (includes mipmap behavior)
-  glSamplerParameteri(m_Sampler,
-                      GL_TEXTURE_MIN_FILTER,
-                      ToGLMipFilter(desc.MinFilter, desc.MipFilter));
+  // Minification filter: use non-mipmap variant when MaxLod is 0
+  if (desc.MaxLod <= 0.0F) {
+    glSamplerParameteri(
+        m_Sampler, GL_TEXTURE_MIN_FILTER, ToGLFilter(desc.MinFilter));
+  } else {
+    glSamplerParameteri(m_Sampler,
+                        GL_TEXTURE_MIN_FILTER,
+                        ToGLMipFilter(desc.MinFilter, desc.MipFilter));
+  }
 
   // Magnification filter (no mipmaps involved)
   glSamplerParameteri(
       m_Sampler, GL_TEXTURE_MAG_FILTER, ToGLFilter(desc.MagFilter));
+
+  // LOD range
+  glSamplerParameterf(m_Sampler, GL_TEXTURE_MIN_LOD, desc.MinLod);
+  glSamplerParameterf(m_Sampler, GL_TEXTURE_MAX_LOD, desc.MaxLod);
 
   // Texture wrapping modes
   glSamplerParameteri(

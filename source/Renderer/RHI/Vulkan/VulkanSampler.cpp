@@ -62,8 +62,8 @@ VulkanSampler::VulkanSampler(const VulkanDevice& device,
   sampler_info.maxAnisotropy = desc.MaxAnisotropy;
   sampler_info.compareEnable = VK_FALSE;
   sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
-  sampler_info.minLod = 0.0F;
-  sampler_info.maxLod = VK_LOD_CLAMP_NONE;
+  sampler_info.minLod = desc.MinLod;
+  sampler_info.maxLod = desc.MaxLod;
   sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
   sampler_info.unnormalizedCoordinates = VK_FALSE;
 

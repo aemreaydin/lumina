@@ -39,6 +39,44 @@ static auto ToVkFormat(TextureFormat format) -> VkFormat
   return VK_FORMAT_R8G8B8A8_UNORM;
 }
 
+static auto IsDepthFormat(TextureFormat format) -> bool
+{
+  return format == TextureFormat::Depth32F
+      || format == TextureFormat::Depth24Stencil8;
+}
+
+static auto ToVkImageUsageFlags(TextureUsage usage) -> VkImageUsageFlags
+{
+  VkImageUsageFlags flags = 0;
+  if ((usage & TextureUsage::Sampled) == TextureUsage::Sampled) {
+    flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+  }
+  if ((usage & TextureUsage::Storage) == TextureUsage::Storage) {
+    flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+  }
+  if ((usage & TextureUsage::TransferDst) == TextureUsage::TransferDst) {
+    flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  }
+  if ((usage & TextureUsage::TransferSrc) == TextureUsage::TransferSrc) {
+    flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  }
+  if ((usage & TextureUsage::ColorAttachment)
+      == TextureUsage::ColorAttachment)
+  {
+    flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  }
+  if ((usage & TextureUsage::DepthStencilAttachment)
+      == TextureUsage::DepthStencilAttachment)
+  {
+    flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+  }
+  // Backward compat: plain Sampled textures also get TRANSFER_DST for Upload()
+  if (flags == VK_IMAGE_USAGE_SAMPLED_BIT) {
+    flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  }
+  return flags;
+}
+
 static auto FindMemoryType(VkPhysicalDevice physical_device,
                            uint32_t type_filter,
                            VkMemoryPropertyFlags properties) -> uint32_t
@@ -78,8 +116,7 @@ VulkanTexture::VulkanTexture(const VulkanDevice& device,
   image_info.arrayLayers = 1;
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
   image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-  image_info.usage =
-      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  image_info.usage = ToVkImageUsageFlags(desc.Usage);
   image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -130,7 +167,9 @@ VulkanTexture::VulkanTexture(const VulkanDevice& device,
   view_info.image = m_Image;
   view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
   view_info.format = m_VkFormat;
-  view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  view_info.subresourceRange.aspectMask = IsDepthFormat(desc.Format)
+      ? VK_IMAGE_ASPECT_DEPTH_BIT
+      : VK_IMAGE_ASPECT_COLOR_BIT;
   view_info.subresourceRange.baseMipLevel = 0;
   view_info.subresourceRange.levelCount = desc.MipLevels;
   view_info.subresourceRange.baseArrayLayer = 0;

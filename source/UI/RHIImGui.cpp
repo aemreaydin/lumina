@@ -10,7 +10,6 @@
 #include "Renderer/RHI/OpenGL/OpenGLImGui.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanImGui.hpp"
-#include "UI/ImGuiStyle.hpp"
 #include "UI/SceneHierarchyPanel.hpp"
 #include "UI/SettingsPanel.hpp"
 
@@ -50,10 +49,10 @@ void RHIImGui::RenderPanels(Scene& scene)
   const float delta_time = imgui_io.DeltaTime;
 
   // Panel keybinds
-  if (ImGui::IsKeyPressed(ImGuiKey_F1)) {
+  if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
     ToggleSettings();
   }
-  if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
+  if (ImGui::IsKeyPressed(ImGuiKey_F1)) {
     ToggleSceneHierarchy();
   }
 

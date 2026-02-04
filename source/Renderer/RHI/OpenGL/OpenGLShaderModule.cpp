@@ -1,73 +1,9 @@
 #include <format>
 #include <stdexcept>
-#include <unordered_map>
 
 #include "Renderer/RHI/OpenGL/OpenGLShaderModule.hpp"
 
 #include "Core/Logger.hpp"
-
-static constexpr uint32_t kBindingStride = 16;
-
-static constexpr uint32_t kSpvOpDecorate = 71;
-static constexpr uint32_t kSpvDecorationBinding = 33;
-static constexpr uint32_t kSpvDecorationDescriptorSet = 34;
-
-static void FlattenSpirvBindings(std::vector<uint32_t>& spirv)
-{
-  if (spirv.size() < 5) {
-    return;
-  }
-
-  struct DecorationInfo
-  {
-    uint32_t Set {0};
-    uint32_t Binding {0};
-    size_t SetWordOffset {0};
-    size_t BindingWordOffset {0};
-    bool HasSet {false};
-    bool HasBinding {false};
-  };
-
-  std::unordered_map<uint32_t, DecorationInfo> decorations;
-
-  size_t i = 5;
-  while (i < spirv.size()) {
-    uint32_t word0 = spirv[i];
-    auto word_count = static_cast<uint16_t>(word0 >> 16);
-    auto opcode = static_cast<uint16_t>(word0 & 0xFFFF);
-
-    if (word_count == 0) {
-      break;
-    }
-
-    if (opcode == kSpvOpDecorate && word_count >= 4) {
-      uint32_t target_id = spirv[i + 1];
-      uint32_t decoration = spirv[i + 2];
-
-      if (decoration == kSpvDecorationDescriptorSet) {
-        auto& info = decorations[target_id];
-        info.Set = spirv[i + 3];
-        info.SetWordOffset = i + 3;
-        info.HasSet = true;
-      } else if (decoration == kSpvDecorationBinding) {
-        auto& info = decorations[target_id];
-        info.Binding = spirv[i + 3];
-        info.BindingWordOffset = i + 3;
-        info.HasBinding = true;
-      }
-    }
-
-    i += word_count;
-  }
-
-  for (auto& [id, info] : decorations) {
-    if (info.HasSet && info.HasBinding) {
-      uint32_t flat_binding = info.Set * kBindingStride + info.Binding;
-      spirv[info.SetWordOffset] = 0;
-      spirv[info.BindingWordOffset] = flat_binding;
-    }
-  }
-}
 
 static auto ShaderStageToGL(ShaderStage stage) -> GLenum
 {
@@ -85,36 +21,22 @@ static auto ShaderStageToGL(ShaderStage stage) -> GLenum
 OpenGLShaderModule::OpenGLShaderModule(const ShaderModuleDesc& desc)
     : m_Stage(desc.Stage)
 {
-  if (desc.SPIRVCode.empty()) {
-    throw std::runtime_error("Shader SPIR-V code is empty");
+  if (desc.GLSLCode.empty()) {
+    throw std::runtime_error("No GLSL code provided for OpenGL shader");
   }
-
-  auto spirv = desc.SPIRVCode;
-  FlattenSpirvBindings(spirv);
 
   m_Shader = glCreateShader(ShaderStageToGL(m_Stage));
   if (m_Shader == 0) {
     throw std::runtime_error("Failed to create OpenGL shader");
   }
 
-  glShaderBinary(1,
-                 &m_Shader,
-                 GL_SHADER_BINARY_FORMAT_SPIR_V,
-                 spirv.data(),
-                 static_cast<GLsizei>(spirv.size() * sizeof(uint32_t)));
-
-  GLenum err = glGetError();
-  if (err != GL_NO_ERROR) {
-    glDeleteShader(m_Shader);
-    throw std::runtime_error(
-        std::format("Failed to load SPIR-V binary: GL error {}", err));
-  }
-
-  glSpecializeShader(m_Shader, desc.EntryPoint.c_str(), 0, nullptr, nullptr);
+  const char* source = desc.GLSLCode.c_str();
+  glShaderSource(m_Shader, 1, &source, nullptr);
+  glCompileShader(m_Shader);
 
   GLint success = 0;
   glGetShaderiv(m_Shader, GL_COMPILE_STATUS, &success);
-  if (success == 0) {
+  if (success == GL_FALSE) {
     GLint log_length = 0;
     glGetShaderiv(m_Shader, GL_INFO_LOG_LENGTH, &log_length);
 
@@ -122,11 +44,12 @@ OpenGLShaderModule::OpenGLShaderModule(const ShaderModuleDesc& desc)
     glGetShaderInfoLog(m_Shader, log_length, nullptr, info_log.data());
 
     glDeleteShader(m_Shader);
+    m_Shader = 0;
     throw std::runtime_error(
-        std::format("Failed to specialize SPIR-V shader: {}", info_log));
+        std::format("Failed to compile GLSL shader: {}", info_log));
   }
 
-  Logger::Trace("[OpenGL] Created {} shader module from SPIR-V",
+  Logger::Trace("[OpenGL] Created {} shader module from GLSL",
                 ToString(m_Stage));
 }
 

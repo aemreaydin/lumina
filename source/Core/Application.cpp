@@ -9,7 +9,10 @@
 #include "Core/ConfigLoader.hpp"
 #include "Core/Input.hpp"
 #include "Core/Logger.hpp"
+#include "Renderer/RHI/RHICommandBuffer.hpp"
 #include "Renderer/RHI/RHIDevice.hpp"
+#include "Renderer/RHI/RHISwapchain.hpp"
+#include "Renderer/RenderGraph.hpp"
 #include "UI/RHIImGui.hpp"
 
 Application::Application() = default;
@@ -36,14 +39,14 @@ void Application::Init()
   m_RHIDevice->Init(m_RendererConfig, m_Window->GetNativeWindow());
   m_RHIDevice->CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 
-  // Initialize ImGui
   m_ImGui = RHIImGui::Create(*m_RHIDevice);
   m_ImGui->Init(*m_Window);
   m_ImGui->SetCurrentAPI(m_RendererConfig.API);
   m_ImGui->SetValidationEnabled(m_RendererConfig.EnableValidation);
   m_ImGui->SetResolution(m_Window->GetWidth(), m_Window->GetHeight());
 
-  // Initialize timing
+  m_RenderGraph = std::make_unique<RenderGraph>();
+
   m_StartTime = SDL_GetPerformanceCounter();
   m_LastFrameTime = m_StartTime;
 
@@ -62,6 +65,8 @@ void Application::Destroy()
 
   OnDestroy();
 
+  m_RenderGraph.reset();
+
   if (m_ImGui) {
     m_ImGui->Shutdown();
     m_ImGui.reset();
@@ -71,7 +76,6 @@ void Application::Destroy()
     m_RHIDevice->Destroy();
   }
 
-  // Destroy window before quitting SDL
   m_Window.reset();
 
   SDL_Quit();
@@ -97,7 +101,6 @@ void Application::OnEvent(void* event)
 
   const ImGuiIO& imgui_io = ImGui::GetIO();
 
-  // Skip mouse events when ImGui wants the mouse (hovering over a panel)
   if (imgui_io.WantCaptureMouse) {
     switch (sdl_event->type) {
       case SDL_EVENT_MOUSE_MOTION:
@@ -110,7 +113,6 @@ void Application::OnEvent(void* event)
     }
   }
 
-  // Skip keyboard events when ImGui wants the keyboard (typing in a widget)
   if (imgui_io.WantCaptureKeyboard) {
     switch (sdl_event->type) {
       case SDL_EVENT_KEY_DOWN:
@@ -129,14 +131,13 @@ void Application::SwitchBackend(RenderAPI new_api)
   Logger::Info("Switching backend to {}",
                new_api == RenderAPI::Vulkan ? "Vulkan" : "OpenGL");
 
-  // Save window dimensions
   const uint32_t width = m_Window->GetWidth();
   const uint32_t height = m_Window->GetHeight();
 
   m_RendererConfig.API = new_api;
 
-  // Tear down in reverse order
   m_RHIDevice->WaitIdle();
+  m_RenderGraph->Clear();
   OnDestroy();
 
   m_ImGui->Shutdown();
@@ -147,7 +148,6 @@ void Application::SwitchBackend(RenderAPI new_api)
 
   m_Window.reset();
 
-  // Rebuild with new API
   WindowProps props;
   props.API = new_api;
   props.Dimensions.Width = width;
@@ -164,9 +164,28 @@ void Application::SwitchBackend(RenderAPI new_api)
   m_ImGui->Init(*m_Window);
   m_ImGui->SetCurrentAPI(new_api);
 
+  m_RenderGraph = std::make_unique<RenderGraph>();
   OnInit();
 
   Logger::Info("Backend switch complete");
+}
+
+auto Application::buildSwapchainPassInfo() -> RenderPassInfo
+{
+  m_DefaultDepthStencil.DepthLoadOp = LoadOp::Clear;
+  m_DefaultDepthStencil.DepthStoreOp = StoreOp::DontCare;
+  m_DefaultDepthStencil.ClearDepthStencil.Depth = 1.0F;
+
+  RenderPassInfo info {};
+  info.ColorAttachment.ColorLoadOp = LoadOp::Clear;
+  info.ColorAttachment.ClearColor = {
+      .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+  if (m_RendererConfig.EnableDepth) {
+    info.DepthStencilAttachment = &m_DefaultDepthStencil;
+  }
+  info.Width = m_RHIDevice->GetSwapchain()->GetWidth();
+  info.Height = m_RHIDevice->GetSwapchain()->GetHeight();
+  return info;
 }
 
 void Application::Run()
@@ -174,58 +193,53 @@ void Application::Run()
   Logger::Info("Starting application main loop");
 
   while (m_Running) {
-    // Calculate delta time using SDL high-resolution timer
     const auto current_time = SDL_GetPerformanceCounter();
     const auto frequency = SDL_GetPerformanceFrequency();
     const auto delta_time = static_cast<float>(current_time - m_LastFrameTime)
         / static_cast<float>(frequency);
     m_LastFrameTime = current_time;
 
-    // Update performance stats
     m_PerfTracker.Update(delta_time);
     m_ImGui->UpdateStats(m_PerfTracker.GetStats());
 
-    // Reset input state for new frame
     Input::BeginFrame();
 
-    // Poll events (forwards to Input::ProcessEvent via OnEvent callback)
     m_Window->OnUpdate();
 
-    // Check for window close
     if (m_Window->ShouldClose()) {
       Logger::Info("Main loop exiting");
       m_Running = false;
       continue;
     }
 
-    // Check for pending backend switch
     if (auto pending = m_ImGui->GetPendingBackendSwitch()) {
       SwitchBackend(*pending);
       m_LastFrameTime = SDL_GetPerformanceCounter();
       continue;
     }
 
-    // Update resolution (may change on window resize)
     m_ImGui->SetResolution(m_Window->GetWidth(), m_Window->GetHeight());
 
-    // Update game logic
     OnUpdate(delta_time);
 
-    // Begin rendering
     m_RHIDevice->BeginFrame();
-
-    // Begin ImGui frame
     m_ImGui->BeginFrame();
 
-    OnRender(delta_time);
+    auto* cmd = m_RHIDevice->GetCurrentCommandBuffer();
 
-    // End ImGui frame (renders draw data)
-    m_ImGui->EndFrame();
+    if (m_RenderGraph->IsCompiled()) {
+      auto* swapchain = m_RHIDevice->GetSwapchain();
+      m_RenderGraph->SetBackbufferSize(
+          swapchain->GetWidth(), swapchain->GetHeight());
+      m_RenderGraph->Execute(*cmd);
+    } else {
+      cmd->BeginRenderPass(buildSwapchainPassInfo());
+      OnRender(delta_time);
+      m_ImGui->EndFrame();
+      cmd->EndRenderPass();
+    }
 
-    // End rendering
     m_RHIDevice->EndFrame();
-
-    // Present to screen
     m_RHIDevice->Present();
   }
 }

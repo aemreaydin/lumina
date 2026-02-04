@@ -8,6 +8,7 @@
 #include "Renderer/RHI/OpenGL/OpenGLBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLDescriptorSet.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLPipelineLayout.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLRenderTarget.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLSampler.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLShaderModule.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLTexture.hpp"
@@ -121,23 +122,6 @@ void OpenGLDevice::BeginFrame()
   }
 
   m_CommandBuffer->Begin();
-
-  DepthStencilInfo depth_stencil {};
-  depth_stencil.DepthLoadOp = LoadOp::Clear;
-  depth_stencil.DepthStoreOp = StoreOp::DontCare;
-  depth_stencil.ClearDepthStencil.Depth = 1.0F;
-
-  RenderPassInfo render_pass {};
-  render_pass.ColorAttachment.ColorLoadOp = LoadOp::Clear;
-  render_pass.ColorAttachment.ClearColor = {
-      .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
-  if (m_DepthEnabled) {
-    render_pass.DepthStencilAttachment = &depth_stencil;
-  }
-  render_pass.Width = m_Swapchain->GetWidth();
-  render_pass.Height = m_Swapchain->GetHeight();
-
-  m_CommandBuffer->BeginRenderPass(render_pass);
 }
 
 void OpenGLDevice::EndFrame()
@@ -146,7 +130,6 @@ void OpenGLDevice::EndFrame()
     return;
   }
 
-  m_CommandBuffer->EndRenderPass();
   m_CommandBuffer->End();
 }
 
@@ -157,7 +140,7 @@ void OpenGLDevice::Present()
   }
 }
 
-auto OpenGLDevice::GetSwapchain() -> RHISwapchain*
+auto OpenGLDevice::GetSwapchain() const -> RHISwapchain*
 {
   return m_Swapchain.get();
 }
@@ -170,6 +153,12 @@ auto OpenGLDevice::GetCurrentCommandBuffer() -> RHICommandBuffer*
 void OpenGLDevice::WaitIdle()
 {
   glFinish();
+}
+
+auto OpenGLDevice::CreateRenderTarget(const RenderTargetDesc& desc)
+    -> std::unique_ptr<RHIRenderTarget>
+{
+  return std::make_unique<OpenGLRenderTarget>(desc);
 }
 
 auto OpenGLDevice::CreateBuffer(const BufferDesc& desc)

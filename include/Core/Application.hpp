@@ -4,11 +4,13 @@
 #include <memory>
 
 #include "Core/PerformanceStats.hpp"
+#include "Renderer/RHI/RenderPassInfo.hpp"
 #include "Renderer/RendererConfig.hpp"
 #include "Window.hpp"
 
 class RHIDevice;
 class RHIImGui;
+class RenderGraph;
 
 class Application
 {
@@ -58,19 +60,24 @@ protected:
     return m_PerfTracker.GetStats();
   }
 
+  [[nodiscard]] auto GetRenderGraph() -> RenderGraph& { return *m_RenderGraph; }
+
   void SwitchBackend(RenderAPI new_api);
 
 private:
   static void InitSdl();
+  [[nodiscard]] auto buildSwapchainPassInfo() -> RenderPassInfo;
 
   RendererConfig m_RendererConfig;
   std::unique_ptr<Window> m_Window;
   std::unique_ptr<RHIDevice> m_RHIDevice;
   std::unique_ptr<RHIImGui> m_ImGui;
+  std::unique_ptr<RenderGraph> m_RenderGraph;
   bool m_Running = true;
   uint64_t m_StartTime {0};
   uint64_t m_LastFrameTime {0};
   PerformanceTracker m_PerfTracker;
+  DepthStencilInfo m_DefaultDepthStencil {};
 };
 
 auto CreateApplication() -> std::unique_ptr<Application>;

@@ -28,6 +28,7 @@ add_library(
         # Renderer
         source/Renderer/Camera.cpp
         source/Renderer/CameraController.cpp
+        source/Renderer/RenderGraph.cpp
         source/Renderer/ShaderCompiler.cpp
         source/Renderer/ShaderReflection.cpp
         # Model
@@ -61,12 +62,14 @@ add_library(
         source/Renderer/RHI/Vulkan/VulkanDescriptorSet.cpp
         source/Renderer/RHI/Vulkan/VulkanPipelineLayout.cpp
         source/Renderer/RHI/Vulkan/VulkanTexture.cpp
+        source/Renderer/RHI/Vulkan/VulkanRenderTarget.cpp
         source/Renderer/RHI/Vulkan/VulkanSampler.cpp
         source/Renderer/RHI/OpenGL/OpenGLBuffer.cpp
         source/Renderer/RHI/OpenGL/OpenGLShaderModule.cpp
         source/Renderer/RHI/OpenGL/OpenGLDescriptorSet.cpp
         source/Renderer/RHI/OpenGL/OpenGLPipelineLayout.cpp
         source/Renderer/RHI/OpenGL/OpenGLTexture.cpp
+        source/Renderer/RHI/OpenGL/OpenGLRenderTarget.cpp
         source/Renderer/RHI/OpenGL/OpenGLSampler.cpp
         source/Renderer/RHI/OpenGL/OpenGLImGui.cpp
         source/Renderer/RHI/Vulkan/VulkanImGui.cpp
@@ -142,6 +145,10 @@ target_link_libraries(lumina_lumina PUBLIC tinyobjloader::tinyobjloader)
 
 find_package(slang CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC slang::slang)
+
+find_package(spirv_cross_core CONFIG REQUIRED)
+find_package(spirv_cross_glsl CONFIG REQUIRED)
+target_link_libraries(lumina_lumina PUBLIC spirv-cross-core spirv-cross-glsl)
 
 # ---- ImGui (local build) ----
 add_library(imgui STATIC

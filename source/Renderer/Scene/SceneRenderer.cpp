@@ -14,9 +14,11 @@
 #include "Renderer/RHI/RHIShaderModule.hpp"
 #include "Renderer/Scene/Scene.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
+#include "linalg/projection.hpp"
 
-SceneRenderer::SceneRenderer(RHIDevice& device)
+SceneRenderer::SceneRenderer(RHIDevice& device, RenderAPI api)
     : m_Device(device)
+    , m_API(api)
 {
   compile_and_reflect();
   create_pipeline_layout();
@@ -54,8 +56,7 @@ void SceneRenderer::RenderScene(RHICommandBuffer& cmd, const Scene& scene)
     RenderNode(cmd, *node);
   }
 
-  // Reset to fill so ImGui renders normally
-  // cmd.SetPolygonMode(PolygonMode::Fill);
+  cmd.SetPolygonMode(PolygonMode::Fill);
 }
 
 void SceneRenderer::RenderNode(RHICommandBuffer& cmd, const SceneNode& node)
@@ -139,7 +140,7 @@ auto SceneRenderer::GetPipelineLayout() const
 
 void SceneRenderer::compile_and_reflect()
 {
-  m_CompileResult = ShaderCompiler::Compile("shaders/scene.slang");
+  m_CompileResult = ShaderCompiler::Compile("shaders/scene.slang", m_API);
 
   Logger::Info("Shader compiled with {} descriptor sets",
                m_CompileResult.Reflection.DescriptorSets.size());
@@ -156,18 +157,18 @@ void SceneRenderer::create_pipeline_layout()
 
 void SceneRenderer::create_shaders()
 {
-  const auto& vertex_spirv = m_CompileResult.Sources.at(ShaderType::Vertex);
   ShaderModuleDesc vertex_desc {};
   vertex_desc.Stage = ShaderStage::Vertex;
-  vertex_desc.SPIRVCode = vertex_spirv;
+  vertex_desc.SPIRVCode = m_CompileResult.GetSPIRV(ShaderType::Vertex);
+  vertex_desc.GLSLCode = m_CompileResult.GetGLSL(ShaderType::Vertex);
   vertex_desc.EntryPoint = "vertexMain";
   vertex_desc.SetLayouts = m_ReflectedLayout.SetLayouts;
   m_VertexShader = m_Device.CreateShaderModule(vertex_desc);
 
-  const auto& fragment_spirv = m_CompileResult.Sources.at(ShaderType::Fragment);
   ShaderModuleDesc fragment_desc {};
   fragment_desc.Stage = ShaderStage::Fragment;
-  fragment_desc.SPIRVCode = fragment_spirv;
+  fragment_desc.SPIRVCode = m_CompileResult.GetSPIRV(ShaderType::Fragment);
+  fragment_desc.GLSLCode = m_CompileResult.GetGLSL(ShaderType::Fragment);
   fragment_desc.EntryPoint = "fragmentMain";
   fragment_desc.SetLayouts = m_ReflectedLayout.SetLayouts;
   m_FragmentShader = m_Device.CreateShaderModule(fragment_desc);
@@ -187,7 +188,7 @@ void SceneRenderer::create_camera_resources()
       0, m_CameraUBO.get(), 0, sizeof(CameraUBO));
 
   BufferDesc node_desc {};
-  node_desc.Size = 1024 * m_NodeAlignment;
+  node_desc.Size = 1024 * static_cast<size_t>(m_NodeAlignment);
   node_desc.Usage = BufferUsage::Uniform;
   node_desc.CPUVisible = true;
   m_NodeDynamicBuffer = m_Device.CreateBuffer(node_desc);

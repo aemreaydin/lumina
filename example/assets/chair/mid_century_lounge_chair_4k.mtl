@@ -1,0 +1,14 @@
+# Blender 5.0.1 MTL File: 'mid_century_lounge_chair_4k.blend'
+# www.blender.org
+
+newmtl mid_century_lounge_chair
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd textures/mid_century_lounge_chair_diff_4k.jpg
+map_Ns textures/mid_century_lounge_chair_rough_4k.jpg
+map_refl textures/mid_century_lounge_chair_metal_4k.jpg
+map_Bump -bm 1.000000 textures/mid_century_lounge_chair_nor_gl_4k.jpg

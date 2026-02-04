@@ -8,6 +8,7 @@
 #include "Core/Logger.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLBuffer.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLDescriptorSet.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLRenderTarget.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLShaderModule.hpp"
 
 void OpenGLCommandBuffer::Begin()
@@ -26,6 +27,14 @@ void OpenGLCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
 {
   Logger::Trace("[OpenGL] Begin render pass ({}x{})", info.Width, info.Height);
   m_CurrentRenderPass = info;
+
+  // Bind FBO for off-screen targets, default framebuffer (0) for swapchain
+  if (info.RenderTarget != nullptr) {
+    auto* rt = dynamic_cast<OpenGLRenderTarget*>(info.RenderTarget);
+    glBindFramebuffer(GL_FRAMEBUFFER, rt->GetFramebuffer());
+  } else {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
 
   glViewport(0,
              0,
@@ -68,13 +77,13 @@ void OpenGLCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
 void OpenGLCommandBuffer::EndRenderPass()
 {
   Logger::Trace("[OpenGL] End render pass");
-  m_CurrentRenderPass = {};
-}
 
-void OpenGLCommandBuffer::ClearColor(float r, float g, float b, float a)
-{
-  glClearColor(r, g, b, a);
-  glClear(GL_COLOR_BUFFER_BIT);
+  // Restore default framebuffer if we were rendering to an FBO
+  if (m_CurrentRenderPass.RenderTarget != nullptr) {
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
+  m_CurrentRenderPass = {};
 }
 
 OpenGLCommandBuffer::~OpenGLCommandBuffer()
@@ -247,6 +256,13 @@ void OpenGLCommandBuffer::Draw(uint32_t vertex_count,
                                uint32_t first_vertex,
                                uint32_t first_instance)
 {
+  // Core profile requires a bound VAO even for attribute-less draws (e.g.
+  // fullscreen triangle)
+  if (m_VAO == 0) {
+    glGenVertexArrays(1, &m_VAO);
+    glBindVertexArray(m_VAO);
+  }
+
   if (instance_count == 1 && first_instance == 0) {
     glDrawArrays(m_PrimitiveMode,
                  static_cast<GLint>(first_vertex),
@@ -266,6 +282,11 @@ void OpenGLCommandBuffer::DrawIndexed(uint32_t index_count,
                                       int32_t /*vertex_offset*/,
                                       uint32_t first_instance)
 {
+  if (m_VAO == 0) {
+    glGenVertexArrays(1, &m_VAO);
+    glBindVertexArray(m_VAO);
+  }
+
   const auto* indices = reinterpret_cast<const void*>(
       static_cast<uintptr_t>(first_index) * sizeof(uint32_t));
 

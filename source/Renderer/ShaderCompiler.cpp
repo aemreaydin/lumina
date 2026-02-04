@@ -5,10 +5,60 @@
 
 #include <slang-com-ptr.h>
 #include <slang.h>
+#include <spirv_cross/spirv_glsl.hpp>
 
 #include "Core/Logger.hpp"
 
 using Slang::ComPtr;
+
+static constexpr uint32_t kGLBindingStride = 16;
+
+static auto SpirvToGLSL(const std::vector<uint32_t>& spirv) -> std::string
+{
+  spirv_cross::CompilerGLSL compiler(spirv);
+
+  spirv_cross::CompilerGLSL::Options opts;
+  opts.version = 460;
+  opts.es = false;
+  opts.vulkan_semantics = false;
+  opts.enable_420pack_extension = false;
+  compiler.set_common_options(opts);
+
+  auto remap =
+      [&](const spirv_cross::SmallVector<spirv_cross::Resource>& resources)
+  {
+    for (const auto& res : resources) {
+      uint32_t set =
+          compiler.get_decoration(res.id, spv::DecorationDescriptorSet);
+      uint32_t binding =
+          compiler.get_decoration(res.id, spv::DecorationBinding);
+      uint32_t flat = set * kGLBindingStride + binding;
+      compiler.set_decoration(res.id, spv::DecorationDescriptorSet, 0);
+      compiler.set_decoration(res.id, spv::DecorationBinding, flat);
+    }
+  };
+
+  auto resources = compiler.get_shader_resources();
+  remap(resources.uniform_buffers);
+  remap(resources.storage_buffers);
+  remap(resources.sampled_images);
+  remap(resources.separate_images);
+  remap(resources.separate_samplers);
+  remap(resources.storage_images);
+
+  // Merge separate image + sampler pairs into combined image samplers
+  compiler.build_combined_image_samplers();
+
+  // Remap combined image sampler bindings to match the image binding
+  for (auto& combined : compiler.get_combined_image_samplers()) {
+    uint32_t binding =
+        compiler.get_decoration(combined.image_id, spv::DecorationBinding);
+    compiler.set_decoration(
+        combined.combined_id, spv::DecorationBinding, binding);
+  }
+
+  return compiler.compile();
+}
 
 static auto MapBindingType(slang::BindingType type) -> ShaderParameterType
 {
@@ -279,6 +329,7 @@ static auto CompileStage(slang::ISession* session,
   auto reflection =
       ExtractReflection(program_layout, global_session, source_path);
 
+  // Get SPIRV (target 0)
   ComPtr<slang::IBlob> spirv_blob;
   linked_program->getEntryPointCode(
       0, 0, spirv_blob.writeRef(), diagnostics.writeRef());
@@ -297,10 +348,11 @@ static auto CompileStage(slang::ISession* session,
   StageCompileResult result;
   result.SPIRV = {view.begin(), view.end()};
   result.Reflection = std::move(reflection);
+
   return result;
 }
 
-auto ShaderCompiler::Compile(const std::string& shader_path)
+auto ShaderCompiler::Compile(const std::string& shader_path, RenderAPI api)
     -> ShaderCompileResult
 {
   ShaderCompileResult result;
@@ -308,21 +360,29 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
   ComPtr<slang::IGlobalSession> global_session;
   slang::createGlobalSession(global_session.writeRef());
 
-  slang::TargetDesc const target_desc = {
+  auto profile = global_session->findProfile("glsl_460");
+
+  slang::TargetDesc spirv_target {
       .format = SLANG_SPIRV,
-      .profile = global_session->findProfile("glsl_460"),
-      .forceGLSLScalarBufferLayout = true};
+      .profile = profile,
+  };
 
   slang::CompilerOptionEntry option {};
   option.name = slang::CompilerOptionName::VulkanUseEntryPointName;
   option.value.kind = slang::CompilerOptionValueKind::Int;
   option.value.intValue0 = 1;
 
+  std::vector<slang::PreprocessorMacroDesc> macros;
+  if (api == RenderAPI::Vulkan) {
+    macros.push_back({.name = "VULKAN", .value = "1"});
+  }
   slang::SessionDesc const session_desc = {
-      .targets = &target_desc,
+      .targets = &spirv_target,
       .targetCount = 1,
       .defaultMatrixLayoutMode =
           SlangMatrixLayoutMode::SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
+      .preprocessorMacros = macros.data(),
+      .preprocessorMacroCount = static_cast<uint32_t>(macros.size()),
       .compilerOptionEntries = &option,
       .compilerOptionEntryCount = 1,
   };
@@ -340,35 +400,33 @@ auto ShaderCompiler::Compile(const std::string& shader_path)
 
   bool reflection_extracted = false;
 
-  const auto vertex_res =
-      CompileStage(session, global_session, module, "vertexMain", shader_path);
-  if (vertex_res.has_value()) {
-    result.Sources.emplace(ShaderType::Vertex, vertex_res->SPIRV);
-    if (!reflection_extracted) {
-      result.Reflection = vertex_res->Reflection;
-      reflection_extracted = true;
+  auto process_stage = [&](const char* entry_point_name, ShaderType type)
+  {
+    auto stage_res = CompileStage(
+        session, global_session, module, entry_point_name, shader_path);
+    if (!stage_res.has_value()) {
+      return;
     }
-  }
 
-  const auto fragment_res = CompileStage(
-      session, global_session, module, "fragmentMain", shader_path);
-  if (fragment_res.has_value()) {
-    result.Sources.emplace(ShaderType::Fragment, fragment_res->SPIRV);
     if (!reflection_extracted) {
-      result.Reflection = fragment_res->Reflection;
+      result.Reflection = stage_res->Reflection;
       reflection_extracted = true;
     }
-  }
 
-  const auto compute_res =
-      CompileStage(session, global_session, module, "computeMain", shader_path);
-  if (compute_res.has_value()) {
-    result.Sources.emplace(ShaderType::Compute, compute_res->SPIRV);
-    if (!reflection_extracted) {
-      result.Reflection = compute_res->Reflection;
-      reflection_extracted = true;
+    if (api == RenderAPI::Vulkan) {
+      result.Sources.emplace(type, std::move(stage_res->SPIRV));
+    } else {
+      auto glsl = SpirvToGLSL(stage_res->SPIRV);
+      Logger::Info("  SPIRV-Cross generated GLSL for '{}' ({} bytes)",
+                   entry_point_name,
+                   glsl.size());
+      result.GLSLSources.emplace(type, std::move(glsl));
     }
-  }
+  };
+
+  process_stage("vertexMain", ShaderType::Vertex);
+  process_stage("fragmentMain", ShaderType::Fragment);
+  process_stage("computeMain", ShaderType::Compute);
 
   return result;
 }

@@ -132,8 +132,6 @@ auto Camera::ScreenPointToRay(float screen_x,
 
   const linalg::Mat4 inv_vp = linalg::inverse(GetViewProjectionMatrix());
 
-  // Unproject near and far points (depth 0-1 due to
-  // GLM_FORCE_DEPTH_ZERO_TO_ONE)
   const linalg::Vec4 near_clip{ndc_x, ndc_y, 0.0F, 1.0F};
   const linalg::Vec4 far_clip{ndc_x, ndc_y, 1.0F, 1.0F};
 

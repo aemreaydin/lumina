@@ -44,6 +44,8 @@ public:
 
   [[nodiscard]] auto GetFOV() const -> float { return m_FOV; }
 
+  [[nodiscard]] auto GetAspectRatio() const -> float { return m_AspectRatio; }
+
   [[nodiscard]] auto GetNearPlane() const -> float { return m_NearPlane; }
 
   [[nodiscard]] auto GetFarPlane() const -> float { return m_FarPlane; }
