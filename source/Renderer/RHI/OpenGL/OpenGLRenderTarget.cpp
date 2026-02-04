@@ -10,13 +10,17 @@ OpenGLRenderTarget::OpenGLRenderTarget(const RenderTargetDesc& desc)
     : m_Width(desc.Width)
     , m_Height(desc.Height)
 {
-  TextureDesc color_desc;
-  color_desc.Width = desc.Width;
-  color_desc.Height = desc.Height;
-  color_desc.Format = desc.ColorFormat;
-  color_desc.Usage =
-      TextureUsage::ColorAttachment | TextureUsage::Sampled;
-  m_ColorTexture = std::make_unique<OpenGLTexture>(color_desc);
+  std::vector<GLenum> draw_buffers;
+  for (size_t i = 0; i < desc.ColorFormats.size(); ++i) {
+    TextureDesc color_desc;
+    color_desc.Width = desc.Width;
+    color_desc.Height = desc.Height;
+    color_desc.Format = desc.ColorFormats[i];
+    color_desc.Usage =
+        TextureUsage::ColorAttachment | TextureUsage::Sampled;
+    m_ColorTextures.push_back(std::make_unique<OpenGLTexture>(color_desc));
+    draw_buffers.push_back(static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + i));
+  }
 
   if (desc.HasDepth) {
     TextureDesc depth_desc;
@@ -29,8 +33,16 @@ OpenGLRenderTarget::OpenGLRenderTarget(const RenderTargetDesc& desc)
 
   glCreateFramebuffers(1, &m_Framebuffer);
 
-  glNamedFramebufferTexture(
-      m_Framebuffer, GL_COLOR_ATTACHMENT0, m_ColorTexture->GetGLTexture(), 0);
+  for (size_t i = 0; i < m_ColorTextures.size(); ++i) {
+    glNamedFramebufferTexture(m_Framebuffer,
+                              static_cast<GLenum>(GL_COLOR_ATTACHMENT0 + i),
+                              m_ColorTextures[i]->GetGLTexture(),
+                              0);
+  }
+
+  glNamedFramebufferDrawBuffers(m_Framebuffer,
+                                static_cast<GLsizei>(draw_buffers.size()),
+                                draw_buffers.data());
 
   if (m_DepthTexture) {
     GLenum attachment = (desc.DepthFormat == TextureFormat::Depth24Stencil8)
@@ -46,8 +58,10 @@ OpenGLRenderTarget::OpenGLRenderTarget(const RenderTargetDesc& desc)
         std::format("OpenGL framebuffer incomplete: {:#x}", status));
   }
 
-  Logger::Trace(
-      "[OpenGL] Created render target {}x{}", desc.Width, desc.Height);
+  Logger::Trace("[OpenGL] Created render target {}x{} with {} color attachment(s)",
+                desc.Width,
+                desc.Height,
+                m_ColorTextures.size());
 }
 
 OpenGLRenderTarget::~OpenGLRenderTarget()
@@ -68,9 +82,17 @@ auto OpenGLRenderTarget::GetHeight() const -> uint32_t
   return m_Height;
 }
 
-auto OpenGLRenderTarget::GetColorTexture() -> RHITexture*
+auto OpenGLRenderTarget::GetColorTexture(size_t index) -> RHITexture*
 {
-  return m_ColorTexture.get();
+  if (index >= m_ColorTextures.size()) {
+    return nullptr;
+  }
+  return m_ColorTextures[index].get();
+}
+
+auto OpenGLRenderTarget::GetColorTextureCount() const -> size_t
+{
+  return m_ColorTextures.size();
 }
 
 auto OpenGLRenderTarget::GetDepthTexture() -> RHITexture*

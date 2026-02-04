@@ -165,7 +165,7 @@ void RenderGraph::createResources(RHIDevice& device)
     RenderTargetDesc rt_desc;
     rt_desc.Width = resource.Desc.Width;
     rt_desc.Height = resource.Desc.Height;
-    rt_desc.ColorFormat = resource.Desc.ColorFormat;
+    rt_desc.ColorFormats = {resource.Desc.ColorFormat};
     rt_desc.DepthFormat = resource.Desc.DepthFormat;
     rt_desc.HasDepth = resource.Desc.HasDepth;
     resource.Target = device.CreateRenderTarget(rt_desc);

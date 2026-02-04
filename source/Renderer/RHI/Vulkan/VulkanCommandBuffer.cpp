@@ -115,8 +115,8 @@ void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
     // Off-screen render target path
     m_IsSwapchainTarget = false;
     auto* rt = dynamic_cast<VulkanRenderTarget*>(info.RenderTarget);
-    color_image = rt->GetColorImage();
-    color_view = rt->GetColorImageView();
+    color_image = rt->GetColorImage(0);
+    color_view = rt->GetColorImageView(0);
     if (info.DepthStencilAttachment != nullptr) {
       depth_image = rt->GetDepthImage();
       depth_view = rt->GetDepthImageView();
@@ -249,7 +249,7 @@ void VulkanCommandBuffer::EndRenderPass()
   } else if (m_CurrentRenderPass.RenderTarget != nullptr) {
     auto* rt =
         dynamic_cast<VulkanRenderTarget*>(m_CurrentRenderPass.RenderTarget);
-    color_image = rt->GetColorImage();
+    color_image = rt->GetColorImage(0);
   }
 
   // Transition: swapchain -> PRESENT_SRC, off-screen -> SHADER_READ_ONLY

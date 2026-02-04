@@ -8,13 +8,16 @@ VulkanRenderTarget::VulkanRenderTarget(const VulkanDevice& device,
     : m_Width(desc.Width)
     , m_Height(desc.Height)
 {
-  TextureDesc color_desc;
-  color_desc.Width = desc.Width;
-  color_desc.Height = desc.Height;
-  color_desc.Format = desc.ColorFormat;
-  color_desc.Usage =
-      TextureUsage::ColorAttachment | TextureUsage::Sampled;
-  m_ColorTexture = std::make_unique<VulkanTexture>(device, color_desc);
+  for (const auto& format : desc.ColorFormats) {
+    TextureDesc color_desc;
+    color_desc.Width = desc.Width;
+    color_desc.Height = desc.Height;
+    color_desc.Format = format;
+    color_desc.Usage =
+        TextureUsage::ColorAttachment | TextureUsage::Sampled;
+    m_ColorTextures.push_back(
+        std::make_unique<VulkanTexture>(device, color_desc));
+  }
 
   if (desc.HasDepth) {
     TextureDesc depth_desc;
@@ -25,8 +28,10 @@ VulkanRenderTarget::VulkanRenderTarget(const VulkanDevice& device,
     m_DepthTexture = std::make_unique<VulkanTexture>(device, depth_desc);
   }
 
-  Logger::Trace(
-      "[Vulkan] Created render target {}x{}", desc.Width, desc.Height);
+  Logger::Trace("[Vulkan] Created render target {}x{} with {} color attachment(s)",
+                desc.Width,
+                desc.Height,
+                m_ColorTextures.size());
 }
 
 auto VulkanRenderTarget::GetWidth() const -> uint32_t
@@ -39,9 +44,17 @@ auto VulkanRenderTarget::GetHeight() const -> uint32_t
   return m_Height;
 }
 
-auto VulkanRenderTarget::GetColorTexture() -> RHITexture*
+auto VulkanRenderTarget::GetColorTexture(size_t index) -> RHITexture*
 {
-  return m_ColorTexture.get();
+  if (index >= m_ColorTextures.size()) {
+    return nullptr;
+  }
+  return m_ColorTextures[index].get();
+}
+
+auto VulkanRenderTarget::GetColorTextureCount() const -> size_t
+{
+  return m_ColorTextures.size();
 }
 
 auto VulkanRenderTarget::GetDepthTexture() -> RHITexture*
@@ -49,14 +62,22 @@ auto VulkanRenderTarget::GetDepthTexture() -> RHITexture*
   return m_DepthTexture.get();
 }
 
-auto VulkanRenderTarget::GetColorImage() const -> VkImage
+auto VulkanRenderTarget::GetColorImage(size_t index) const -> VkImage
 {
-  return m_ColorTexture ? m_ColorTexture->GetVkImage() : VK_NULL_HANDLE;
+  if (index >= m_ColorTextures.size()) {
+    return VK_NULL_HANDLE;
+  }
+  return m_ColorTextures[index] ? m_ColorTextures[index]->GetVkImage()
+                                : VK_NULL_HANDLE;
 }
 
-auto VulkanRenderTarget::GetColorImageView() const -> VkImageView
+auto VulkanRenderTarget::GetColorImageView(size_t index) const -> VkImageView
 {
-  return m_ColorTexture ? m_ColorTexture->GetVkImageView() : VK_NULL_HANDLE;
+  if (index >= m_ColorTextures.size()) {
+    return VK_NULL_HANDLE;
+  }
+  return m_ColorTextures[index] ? m_ColorTextures[index]->GetVkImageView()
+                                : VK_NULL_HANDLE;
 }
 
 auto VulkanRenderTarget::GetDepthImage() const -> VkImage
