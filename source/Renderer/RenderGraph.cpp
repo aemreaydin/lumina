@@ -62,11 +62,22 @@ auto RenderGraph::IsCompiled() const -> bool
 
 auto RenderGraph::GetTexture(const std::string& name) -> RHITexture*
 {
+  // Check MRT attachment map first
+  auto map_it = m_AttachmentMap.find(name);
+  if (map_it != m_AttachmentMap.end()) {
+    if (map_it->second.IsDepth) {
+      return map_it->second.SharedTarget->GetDepthTexture();
+    }
+    return map_it->second.SharedTarget->GetColorTexture(
+        map_it->second.AttachmentIndex);
+  }
+
+  // Fallback to single-resource path
   auto it = m_Resources.find(name);
   if (it == m_Resources.end() || it->second.Target == nullptr) {
     return nullptr;
   }
-  return it->second.Target->GetColorTexture();
+  return it->second.Target->GetColorTexture(0);
 }
 
 auto RenderGraph::GetRenderTarget(const std::string& name) -> RHIRenderTarget*
@@ -88,6 +99,8 @@ void RenderGraph::Resize(RHIDevice& device, uint32_t width, uint32_t height)
     resource.Desc.Height = height;
     resource.Target.reset();
   }
+  m_AttachmentMap.clear();
+  m_SharedTargets.clear();
   createResources(device);
   buildRenderPassInfos();
 }
@@ -97,6 +110,8 @@ void RenderGraph::Clear()
   m_Resources.clear();
   m_Passes.clear();
   m_ExecutionOrder.clear();
+  m_AttachmentMap.clear();
+  m_SharedTargets.clear();
   m_Compiled = false;
 }
 
@@ -154,21 +169,89 @@ void RenderGraph::topologicalSort()
 
 void RenderGraph::createResources(RHIDevice& device)
 {
-  for (auto& [name, resource] : m_Resources) {
-    if (name == BACKBUFFER) {
-      continue;
-    }
-    if (resource.Target != nullptr) {
-      continue;
+  m_AttachmentMap.clear();
+  m_SharedTargets.clear();
+
+  for (auto& pass : m_Passes) {
+    std::vector<std::string> color_outputs;
+    std::string depth_output;
+
+    for (const auto& output : pass.Desc.Outputs) {
+      if (output == BACKBUFFER) {
+        continue;
+      }
+      auto it = m_Resources.find(output);
+      if (it == m_Resources.end()) {
+        continue;
+      }
+
+      if (it->second.Desc.IsDepth) {
+        depth_output = output;
+      } else {
+        color_outputs.push_back(output);
+      }
     }
 
-    RenderTargetDesc rt_desc;
-    rt_desc.Width = resource.Desc.Width;
-    rt_desc.Height = resource.Desc.Height;
-    rt_desc.ColorFormats = {resource.Desc.ColorFormat};
-    rt_desc.DepthFormat = resource.Desc.DepthFormat;
-    rt_desc.HasDepth = resource.Desc.HasDepth;
-    resource.Target = device.CreateRenderTarget(rt_desc);
+    // MRT case: multiple color outputs or color + depth from one pass
+    if (color_outputs.size() > 1
+        || (!color_outputs.empty() && !depth_output.empty()))
+    {
+      RenderTargetDesc rt_desc;
+      rt_desc.Width = m_Resources[color_outputs[0]].Desc.Width;
+      rt_desc.Height = m_Resources[color_outputs[0]].Desc.Height;
+      rt_desc.ColorFormats.clear();
+
+      for (const auto& name : color_outputs) {
+        rt_desc.ColorFormats.push_back(m_Resources[name].Desc.ColorFormat);
+      }
+
+      if (!depth_output.empty()) {
+        rt_desc.DepthFormat = m_Resources[depth_output].Desc.DepthFormat;
+        rt_desc.HasDepth = true;
+      } else {
+        rt_desc.HasDepth = false;
+      }
+
+      auto shared_rt = device.CreateRenderTarget(rt_desc);
+      auto* rt_ptr = shared_rt.get();
+
+      for (size_t i = 0; i < color_outputs.size(); ++i) {
+        m_AttachmentMap[color_outputs[i]] = {
+            .SharedTarget = rt_ptr,
+            .AttachmentIndex = i,
+            .IsDepth = false,
+        };
+      }
+      if (!depth_output.empty()) {
+        m_AttachmentMap[depth_output] = {
+            .SharedTarget = rt_ptr,
+            .AttachmentIndex = 0,
+            .IsDepth = true,
+        };
+      }
+
+      m_SharedTargets.push_back(std::move(shared_rt));
+      continue;  // Skip single-output path for passes already handled
+    }
+
+    // Single output -- existing path
+    for (const auto& output : pass.Desc.Outputs) {
+      if (output == BACKBUFFER) {
+        continue;
+      }
+      auto& resource = m_Resources[output];
+      if (resource.Target != nullptr) {
+        continue;
+      }
+
+      RenderTargetDesc rt_desc;
+      rt_desc.Width = resource.Desc.Width;
+      rt_desc.Height = resource.Desc.Height;
+      rt_desc.ColorFormats = {resource.Desc.ColorFormat};
+      rt_desc.DepthFormat = resource.Desc.DepthFormat;
+      rt_desc.HasDepth = resource.Desc.HasDepth;
+      resource.Target = device.CreateRenderTarget(rt_desc);
+    }
   }
 }
 
@@ -190,11 +273,21 @@ void RenderGraph::buildRenderPassInfos()
     if (writes_backbuffer) {
       info.RenderTarget = nullptr;
     } else if (!pass.Desc.Outputs.empty()) {
-      auto it = m_Resources.find(pass.Desc.Outputs[0]);
-      if (it != m_Resources.end() && it->second.Target != nullptr) {
-        info.RenderTarget = it->second.Target.get();
-        info.Width = it->second.Target->GetWidth();
-        info.Height = it->second.Target->GetHeight();
+      // Check MRT attachment map first
+      const auto& first_output = pass.Desc.Outputs[0];
+      auto map_it = m_AttachmentMap.find(first_output);
+      if (map_it != m_AttachmentMap.end()) {
+        info.RenderTarget = map_it->second.SharedTarget;
+        info.Width = info.RenderTarget->GetWidth();
+        info.Height = info.RenderTarget->GetHeight();
+      } else {
+        // Single output path
+        auto it = m_Resources.find(first_output);
+        if (it != m_Resources.end() && it->second.Target != nullptr) {
+          info.RenderTarget = it->second.Target.get();
+          info.Width = it->second.Target->GetWidth();
+          info.Height = it->second.Target->GetHeight();
+        }
       }
     }
 

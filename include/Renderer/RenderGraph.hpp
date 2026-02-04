@@ -27,6 +27,7 @@ public:
     TextureFormat ColorFormat {TextureFormat::RGBA8Srgb};
     TextureFormat DepthFormat {TextureFormat::Depth32F};
     bool HasDepth {true};
+    bool IsDepth {false};  // true = depth-only resource
   };
 
   struct PassDesc
@@ -74,6 +75,17 @@ private:
 
   std::unordered_map<std::string, Resource> m_Resources;
   std::vector<Pass> m_Passes;
+
+  // MRT grouping: maps resource name -> (shared RT, attachment index)
+  struct AttachmentMapping
+  {
+    RHIRenderTarget* SharedTarget {nullptr};
+    size_t AttachmentIndex {0};
+    bool IsDepth {false};
+  };
+  std::unordered_map<std::string, AttachmentMapping> m_AttachmentMap;
+  // Shared render targets for MRT passes (owned here)
+  std::vector<std::unique_ptr<RHIRenderTarget>> m_SharedTargets;
 
   std::vector<size_t> m_ExecutionOrder;
   bool m_Compiled {false};
