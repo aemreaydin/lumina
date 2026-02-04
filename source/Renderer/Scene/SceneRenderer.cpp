@@ -208,6 +208,7 @@ void SceneRenderer::update_camera_ubo(const Camera& camera)
   data.View = camera.GetViewMatrix();
   data.Projection = camera.GetProjectionMatrix();
   data.ViewProjection = camera.GetViewProjectionMatrix();
+  data.InverseViewProjection = linalg::inverse(data.ViewProjection);
   data.CameraPosition = linalg::Vec4(camera.GetPosition(), 1.0F);
 
   m_CameraUBO->Upload(&data, sizeof(CameraUBO), 0);

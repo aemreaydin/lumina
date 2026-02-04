@@ -27,6 +27,7 @@ struct CameraUBO
   linalg::Mat4 View;
   linalg::Mat4 Projection;
   linalg::Mat4 ViewProjection;
+  linalg::Mat4 InverseViewProjection;
   linalg::Vec4 CameraPosition;
 };
 
