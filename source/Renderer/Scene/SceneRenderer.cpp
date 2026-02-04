@@ -16,9 +16,11 @@
 #include "Renderer/Scene/SceneNode.hpp"
 #include "linalg/projection.hpp"
 
-SceneRenderer::SceneRenderer(RHIDevice& device, RenderAPI api)
+SceneRenderer::SceneRenderer(RHIDevice& device, RenderAPI api,
+                             const std::string& shader_path)
     : m_Device(device)
     , m_API(api)
+    , m_ShaderPath(shader_path)
 {
   compile_and_reflect();
   create_pipeline_layout();
@@ -140,7 +142,7 @@ auto SceneRenderer::GetPipelineLayout() const
 
 void SceneRenderer::compile_and_reflect()
 {
-  m_CompileResult = ShaderCompiler::Compile("shaders/scene.slang", m_API);
+  m_CompileResult = ShaderCompiler::Compile(m_ShaderPath, m_API);
 
   Logger::Info("Shader compiled with {} descriptor sets",
                m_CompileResult.Reflection.DescriptorSets.size());

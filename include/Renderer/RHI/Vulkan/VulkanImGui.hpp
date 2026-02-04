@@ -29,9 +29,12 @@ public:
   void BeginFrame() override;
   void EndFrame() override;
 
+  auto RegisterTexture(RHITexture* texture) -> void* override;
+
 private:
   VulkanDevice& m_Device;
   VkDescriptorPool m_DescriptorPool {VK_NULL_HANDLE};
+  VkSampler m_LinearSampler {VK_NULL_HANDLE};
   VkFormat m_ColorFormat {VK_FORMAT_UNDEFINED};
 };
 

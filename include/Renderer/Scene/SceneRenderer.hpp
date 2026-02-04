@@ -2,6 +2,7 @@
 #define RENDERER_SCENE_SCENERENDERER_HPP
 
 #include <memory>
+#include <string>
 
 #include <linalg/mat4.hpp>
 #include <linalg/vec.hpp>
@@ -38,7 +39,8 @@ struct NodeUBO
 class SceneRenderer
 {
 public:
-  explicit SceneRenderer(RHIDevice& device, RenderAPI api);
+  explicit SceneRenderer(RHIDevice& device, RenderAPI api,
+                         const std::string& shader_path = "shaders/scene.slang");
   ~SceneRenderer();
 
   SceneRenderer(const SceneRenderer&) = delete;
@@ -66,6 +68,7 @@ private:
 
   RHIDevice& m_Device;
   RenderAPI m_API;
+  std::string m_ShaderPath;
 
   ShaderCompileResult m_CompileResult;
   ReflectedPipelineLayout m_ReflectedLayout;

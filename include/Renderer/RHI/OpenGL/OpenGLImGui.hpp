@@ -26,6 +26,8 @@ public:
   void BeginFrame() override;
   void EndFrame() override;
 
+  auto RegisterTexture(RHITexture* texture) -> void* override;
+
 private:
   OpenGLDevice& m_Device;
 };

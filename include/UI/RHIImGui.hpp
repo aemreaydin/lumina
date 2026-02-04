@@ -13,6 +13,7 @@ class Window;
 class Scene;
 class SceneNode;
 class RHIDevice;
+class RHITexture;
 class Camera;
 class SettingsPanel;
 class SceneHierarchyPanel;
@@ -26,6 +27,8 @@ public:
   virtual void Shutdown() = 0;
   virtual void BeginFrame() = 0;
   virtual void EndFrame() = 0;
+
+  virtual auto RegisterTexture(RHITexture* texture) -> void* = 0;
 
   void RenderPanels(Scene& scene);
   void ToggleSettings();

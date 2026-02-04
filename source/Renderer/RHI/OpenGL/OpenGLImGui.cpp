@@ -7,6 +7,7 @@
 #include "Core/Logger.hpp"
 #include "Core/Window.hpp"
 #include "Renderer/RHI/OpenGL/OpenGLDevice.hpp"
+#include "Renderer/RHI/OpenGL/OpenGLTexture.hpp"
 #include "UI/ImGuiStyle.hpp"
 
 OpenGLImGui::OpenGLImGui(OpenGLDevice& device)
@@ -68,4 +69,15 @@ void OpenGLImGui::EndFrame()
 {
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+auto OpenGLImGui::RegisterTexture(RHITexture* texture) -> void*
+{
+  auto* gl_texture = dynamic_cast<OpenGLTexture*>(texture);
+  if (gl_texture == nullptr) {
+    return nullptr;
+  }
+
+  return reinterpret_cast<void*>(
+      static_cast<uintptr_t>(gl_texture->GetGLTexture()));
 }

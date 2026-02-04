@@ -12,6 +12,7 @@
 #include "Renderer/RHI/Vulkan/VulkanCommandBuffer.hpp"
 #include "Renderer/RHI/Vulkan/VulkanDevice.hpp"
 #include "Renderer/RHI/Vulkan/VulkanSwapchain.hpp"
+#include "Renderer/RHI/Vulkan/VulkanTexture.hpp"
 #include "UI/ImGuiStyle.hpp"
 
 VulkanImGui::VulkanImGui(VulkanDevice& device)
@@ -93,6 +94,23 @@ void VulkanImGui::Init(Window& window)
   // before the first frame (avoids descriptor set issues during rendering)
   ImGui_ImplVulkan_CreateFontsTexture();
 
+  // Create a linear sampler for texture registration
+  VkSamplerCreateInfo sampler_info {};
+  sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  sampler_info.magFilter = VK_FILTER_LINEAR;
+  sampler_info.minFilter = VK_FILTER_LINEAR;
+  sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+  if (vkCreateSampler(
+          m_Device.GetVkDevice(), &sampler_info, nullptr, &m_LinearSampler)
+      != VK_SUCCESS)
+  {
+    throw std::runtime_error("Failed to create ImGui linear sampler");
+  }
+
   Logger::Info("Vulkan ImGui backend initialized");
 }
 
@@ -105,6 +123,11 @@ void VulkanImGui::Shutdown()
   ImGui_ImplVulkan_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
+
+  if (m_LinearSampler != VK_NULL_HANDLE) {
+    vkDestroySampler(m_Device.GetVkDevice(), m_LinearSampler, nullptr);
+    m_LinearSampler = VK_NULL_HANDLE;
+  }
 
   if (m_DescriptorPool != VK_NULL_HANDLE) {
     vkDestroyDescriptorPool(m_Device.GetVkDevice(), m_DescriptorPool, nullptr);
@@ -128,4 +151,19 @@ void VulkanImGui::EndFrame()
 
   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(),
                                   cmd_buffer->GetHandle());
+}
+
+auto VulkanImGui::RegisterTexture(RHITexture* texture) -> void*
+{
+  auto* vk_texture = dynamic_cast<VulkanTexture*>(texture);
+  if (vk_texture == nullptr) {
+    return nullptr;
+  }
+
+  VkDescriptorSet descriptor_set = ImGui_ImplVulkan_AddTexture(
+      m_LinearSampler,
+      vk_texture->GetVkImageView(),
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  return static_cast<void*>(descriptor_set);
 }
