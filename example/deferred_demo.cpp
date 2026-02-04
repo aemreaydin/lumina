@@ -106,32 +106,32 @@ protected:
 
     auto* node3 = m_Scene->CreateNode("Chair");
     node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, -3.0F});
+    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, -3.5F});
     node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, -90.0F});
     node3->SetScale(3.0F);
 
     auto* node4 = m_Scene->CreateNode("Chair");
-    node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {5.0F, 0.0F, -3.0F});
-    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 90.0F});
-    node3->SetScale(3.0F);
+    node4->SetModel(chair);
+    node4->SetPosition(linalg::Vec3 {5.0F, 0.0F, -3.5F});
+    node4->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 90.0F});
+    node4->SetScale(3.0F);
 
     auto* node5 = m_Scene->CreateNode("Chair");
-    node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {0.0F, 5.0F, -3.0F});
-    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 0.0F});
-    node3->SetScale(3.0F);
+    node5->SetModel(chair);
+    node5->SetPosition(linalg::Vec3 {0.0F, 5.0F, -3.5F});
+    node5->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 180.0F});
+    node5->SetScale(3.0F);
 
     auto* node6 = m_Scene->CreateNode("Chair");
-    node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {0.0F, -5.0F, -3.0F});
-    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 180.0F});
-    node3->SetScale(3.0F);
+    node6->SetModel(chair);
+    node6->SetPosition(linalg::Vec3 {0.0F, -5.0F, -3.5F});
+    node6->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+    node6->SetScale(3.0F);
 
     setupLights();
 
     m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
-    m_Camera.SetPosition(linalg::Vec3 {0.0F, 15.0F, 5.0F});
+    m_Camera.SetPosition(linalg::Vec3 {5.0F, 35.0F, 15.0F});
     m_Camera.SetTarget(linalg::Vec3 {0.0F, 0.0F, 0.0F});
 
     m_FPSController = std::make_unique<FPSCameraController>(&m_Camera);
