@@ -1,7 +1,10 @@
 #ifndef RENDERER_RHI_RENDERPASSINFO_HPP
 #define RENDERER_RHI_RENDERPASSINFO_HPP
 
+#include <array>
 #include <cstdint>
+
+inline constexpr uint32_t kMaxColorAttachments = 8;
 
 class RHIRenderTarget;
 
@@ -51,7 +54,8 @@ struct DepthStencilInfo
 struct RenderPassInfo
 {
   RHIRenderTarget* RenderTarget {nullptr};  // nullptr = swapchain
-  AttachmentInfo ColorAttachment;
+  std::array<AttachmentInfo, kMaxColorAttachments> ColorAttachments {};
+  uint32_t ColorAttachmentCount {1};
   DepthStencilInfo* DepthStencilAttachment {nullptr};  // nullptr = no depth
   uint32_t Width {0};
   uint32_t Height {0};

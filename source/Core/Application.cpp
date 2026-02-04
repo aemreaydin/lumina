@@ -177,9 +177,10 @@ auto Application::buildSwapchainPassInfo() -> RenderPassInfo
   m_DefaultDepthStencil.ClearDepthStencil.Depth = 1.0F;
 
   RenderPassInfo info {};
-  info.ColorAttachment.ColorLoadOp = LoadOp::Clear;
-  info.ColorAttachment.ClearColor = {
+  info.ColorAttachments[0].ColorLoadOp = LoadOp::Clear;
+  info.ColorAttachments[0].ClearColor = {
       .R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F};
+  info.ColorAttachmentCount = 1;
   if (m_RendererConfig.EnableDepth) {
     info.DepthStencilAttachment = &m_DefaultDepthStencil;
   }

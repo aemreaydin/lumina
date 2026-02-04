@@ -52,25 +52,29 @@ void OpenGLCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
     glDisable(GL_DEPTH_TEST);
   }
 
-  if (info.ColorAttachment.ColorLoadOp == LoadOp::Clear) {
-    const auto& clear = info.ColorAttachment.ClearColor;
-    glClearColor(clear.R, clear.G, clear.B, clear.A);
-
-    GLbitfield clear_flags = GL_COLOR_BUFFER_BIT;
-
-    if (info.DepthStencilAttachment != nullptr) {
-      if (info.DepthStencilAttachment->DepthLoadOp == LoadOp::Clear) {
-        glClearDepth(info.DepthStencilAttachment->ClearDepthStencil.Depth);
-        clear_flags |= GL_DEPTH_BUFFER_BIT;
-      }
-      if (info.DepthStencilAttachment->StencilLoadOp == LoadOp::Clear) {
-        glClearStencil(static_cast<GLint>(
-            info.DepthStencilAttachment->ClearDepthStencil.Stencil));
-        clear_flags |= GL_STENCIL_BUFFER_BIT;
-      }
+  // Clear each color attachment
+  for (uint32_t i = 0; i < info.ColorAttachmentCount; ++i) {
+    if (info.ColorAttachments[i].ColorLoadOp == LoadOp::Clear) {
+      const auto& clear = info.ColorAttachments[i].ClearColor;
+      glClearColor(clear.R, clear.G, clear.B, clear.A);
+      glClear(GL_COLOR_BUFFER_BIT);
     }
+  }
 
-    glClear(clear_flags);
+  if (info.DepthStencilAttachment != nullptr) {
+    GLbitfield depth_clear_flags = 0;
+    if (info.DepthStencilAttachment->DepthLoadOp == LoadOp::Clear) {
+      glClearDepth(info.DepthStencilAttachment->ClearDepthStencil.Depth);
+      depth_clear_flags |= GL_DEPTH_BUFFER_BIT;
+    }
+    if (info.DepthStencilAttachment->StencilLoadOp == LoadOp::Clear) {
+      glClearStencil(static_cast<GLint>(
+          info.DepthStencilAttachment->ClearDepthStencil.Stencil));
+      depth_clear_flags |= GL_STENCIL_BUFFER_BIT;
+    }
+    if (depth_clear_flags != 0) {
+      glClear(depth_clear_flags);
+    }
   }
 }
 

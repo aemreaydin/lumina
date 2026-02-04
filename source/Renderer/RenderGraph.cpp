@@ -176,7 +176,8 @@ void RenderGraph::buildRenderPassInfos()
 {
   for (auto& pass : m_Passes) {
     RenderPassInfo info {};
-    info.ColorAttachment = pass.Desc.ColorAttachment;
+    info.ColorAttachments = pass.Desc.ColorAttachments;
+    info.ColorAttachmentCount = pass.Desc.ColorAttachmentCount;
 
     bool writes_backbuffer = false;
     for (const auto& output : pass.Desc.Outputs) {

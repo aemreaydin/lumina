@@ -205,9 +205,9 @@ private:
     graph.AddPass({
         .Name = "ScenePass",
         .Outputs = {"SceneColor"},
-        .ColorAttachment =
-            {.ColorLoadOp = LoadOp::Clear,
-             .ClearColor = {.R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F}},
+        .ColorAttachments = {AttachmentInfo{.ColorLoadOp = LoadOp::Clear,
+             .ClearColor = {.R = 0.1F, .G = 0.1F, .B = 0.1F, .A = 1.0F}}},
+        .ColorAttachmentCount = 1,
         .UseDepth = true,
         .DepthStencil =
             {.DepthLoadOp = LoadOp::Clear,
@@ -226,9 +226,9 @@ private:
         .Name = "Composite",
         .Inputs = {"SceneColor"},
         .Outputs = {RenderGraph::BACKBUFFER},
-        .ColorAttachment =
-            {.ColorLoadOp = LoadOp::Clear,
-             .ClearColor = {.R = 0.0F, .G = 1.0F, .B = 0.0F, .A = 1.0F}},
+        .ColorAttachments = {AttachmentInfo{.ColorLoadOp = LoadOp::Clear,
+             .ClearColor = {.R = 0.0F, .G = 1.0F, .B = 0.0F, .A = 1.0F}}},
+        .ColorAttachmentCount = 1,
         .UseDepth = false,
         .Execute =
             [this](RHICommandBuffer& cmd)

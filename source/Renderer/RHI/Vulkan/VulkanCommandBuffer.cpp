@@ -174,25 +174,29 @@ void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
                        static_cast<uint32_t>(barriers.size()),
                        barriers.data());
 
-  // Color attachment
-  VkClearValue clear_value {};
-  if (info.ColorAttachment.ColorLoadOp == LoadOp::Clear) {
-    const auto& c = info.ColorAttachment.ClearColor;
-    clear_value.color.float32[0] = c.R;
-    clear_value.color.float32[1] = c.G;
-    clear_value.color.float32[2] = c.B;
-    clear_value.color.float32[3] = c.A;
-  }
+  // Color attachments
+  std::vector<VkRenderingAttachmentInfo> color_attachment_infos(
+      info.ColorAttachmentCount);
+  for (uint32_t i = 0; i < info.ColorAttachmentCount; ++i) {
+    VkClearValue clear_value {};
+    if (info.ColorAttachments[i].ColorLoadOp == LoadOp::Clear) {
+      const auto& c = info.ColorAttachments[i].ClearColor;
+      clear_value.color.float32[0] = c.R;
+      clear_value.color.float32[1] = c.G;
+      clear_value.color.float32[2] = c.B;
+      clear_value.color.float32[3] = c.A;
+    }
 
-  VkRenderingAttachmentInfo color_attachment {};
-  color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-  color_attachment.imageView = color_view;
-  color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  color_attachment.loadOp = ToVkLoadOp(info.ColorAttachment.ColorLoadOp);
-  color_attachment.storeOp = info.ColorAttachment.ColorStoreOp == StoreOp::Store
-      ? VK_ATTACHMENT_STORE_OP_STORE
-      : VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  color_attachment.clearValue = clear_value;
+    auto& att = color_attachment_infos[i];
+    att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    att.imageView = color_view;  // MRT: updated when render targets support multiple textures
+    att.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    att.loadOp = ToVkLoadOp(info.ColorAttachments[i].ColorLoadOp);
+    att.storeOp = info.ColorAttachments[i].ColorStoreOp == StoreOp::Store
+        ? VK_ATTACHMENT_STORE_OP_STORE
+        : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att.clearValue = clear_value;
+  }
 
   // Depth attachment
   VkRenderingAttachmentInfo depth_attachment {};
@@ -219,8 +223,8 @@ void VulkanCommandBuffer::BeginRenderPass(const RenderPassInfo& info)
   rendering_info.renderArea.extent = {.width = info.Width,
                                       .height = info.Height};
   rendering_info.layerCount = 1;
-  rendering_info.colorAttachmentCount = 1;
-  rendering_info.pColorAttachments = &color_attachment;
+  rendering_info.colorAttachmentCount = info.ColorAttachmentCount;
+  rendering_info.pColorAttachments = color_attachment_infos.data();
   if (info.DepthStencilAttachment != nullptr && depth_view != VK_NULL_HANDLE) {
     rendering_info.pDepthAttachment = &depth_attachment;
   }

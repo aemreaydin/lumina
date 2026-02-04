@@ -34,7 +34,8 @@ public:
     std::string Name;
     std::vector<std::string> Inputs;
     std::vector<std::string> Outputs;
-    AttachmentInfo ColorAttachment;
+    std::array<AttachmentInfo, kMaxColorAttachments> ColorAttachments {};
+    uint32_t ColorAttachmentCount {1};
     bool UseDepth {true};
     DepthStencilInfo DepthStencil;
     std::function<void(RHICommandBuffer&)> Execute;
