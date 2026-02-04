@@ -27,7 +27,8 @@ OpenGLRenderTarget::OpenGLRenderTarget(const RenderTargetDesc& desc)
     depth_desc.Width = desc.Width;
     depth_desc.Height = desc.Height;
     depth_desc.Format = desc.DepthFormat;
-    depth_desc.Usage = TextureUsage::DepthStencilAttachment;
+    depth_desc.Usage =
+        TextureUsage::DepthStencilAttachment | TextureUsage::Sampled;
     m_DepthTexture = std::make_unique<OpenGLTexture>(depth_desc);
   }
 

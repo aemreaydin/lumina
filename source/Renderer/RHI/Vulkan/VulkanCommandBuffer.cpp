@@ -247,6 +247,7 @@ void VulkanCommandBuffer::EndRenderPass()
 
   // Collect all color images for post-pass transition
   std::vector<VkImage> color_images;
+  VkImage depth_image = VK_NULL_HANDLE;
   if (m_IsSwapchainTarget) {
     auto* swapchain = dynamic_cast<VulkanSwapchain*>(m_Device->GetSwapchain());
     color_images.push_back(swapchain->GetCurrentImage());
@@ -256,6 +257,9 @@ void VulkanCommandBuffer::EndRenderPass()
     for (uint32_t i = 0; i < m_CurrentRenderPass.ColorAttachmentCount; ++i) {
       color_images.push_back(rt->GetColorImage(i));
     }
+    if (m_CurrentRenderPass.DepthStencilAttachment != nullptr) {
+      depth_image = rt->GetDepthImage();
+    }
   }
 
   // Transition: swapchain -> PRESENT_SRC, off-screen -> SHADER_READ_ONLY
@@ -264,6 +268,8 @@ void VulkanCommandBuffer::EndRenderPass()
       : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   VkAccessFlags dst_access =
       m_IsSwapchainTarget ? VkAccessFlags {0} : VK_ACCESS_SHADER_READ_BIT;
+  VkPipelineStageFlags src_stage =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   VkPipelineStageFlags dst_stage = m_IsSwapchainTarget
       ? VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
       : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -287,8 +293,28 @@ void VulkanCommandBuffer::EndRenderPass()
     barriers.push_back(barrier);
   }
 
+  // Transition depth image to shader-read for off-screen targets
+  if (!m_IsSwapchainTarget && depth_image != VK_NULL_HANDLE) {
+    VkImageMemoryBarrier depth_barrier {};
+    depth_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    depth_barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depth_barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    depth_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    depth_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    depth_barrier.image = depth_image;
+    depth_barrier.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                                      .baseMipLevel = 0,
+                                      .levelCount = 1,
+                                      .baseArrayLayer = 0,
+                                      .layerCount = 1};
+    depth_barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    depth_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barriers.push_back(depth_barrier);
+    src_stage |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  }
+
   vkCmdPipelineBarrier(m_CommandBuffer,
-                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       src_stage,
                        dst_stage,
                        0,
                        0,

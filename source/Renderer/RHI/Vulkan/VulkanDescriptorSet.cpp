@@ -146,8 +146,13 @@ void VulkanDescriptorSet::WriteCombinedImageSampler(uint32_t binding,
     return;
   }
 
+  const bool is_depth = texture->GetFormat() == TextureFormat::Depth32F
+      || texture->GetFormat() == TextureFormat::Depth24Stencil8;
+
   VkDescriptorImageInfo image_info {};
-  image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  image_info.imageLayout = is_depth
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   image_info.imageView = vk_texture->GetVkImageView();
   image_info.sampler = vk_sampler->GetVkSampler();
 

@@ -160,10 +160,14 @@ auto VulkanImGui::RegisterTexture(RHITexture* texture) -> void*
     return nullptr;
   }
 
+  const bool is_depth = texture->GetFormat() == TextureFormat::Depth32F
+      || texture->GetFormat() == TextureFormat::Depth24Stencil8;
+  VkImageLayout layout = is_depth
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
   VkDescriptorSet descriptor_set = ImGui_ImplVulkan_AddTexture(
-      m_LinearSampler,
-      vk_texture->GetVkImageView(),
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      m_LinearSampler, vk_texture->GetVkImageView(), layout);
 
   return static_cast<void*>(descriptor_set);
 }
