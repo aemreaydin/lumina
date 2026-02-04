@@ -37,9 +37,14 @@ struct CameraData
     float4 cameraPosition;
 };
 
-Sampler2D gAlbedo;
-Sampler2D gNormals;
-Sampler2D gDepth;
+struct GBufferTextures
+{
+    Sampler2D albedo;
+    Sampler2D normals;
+    Sampler2D depth;
+};
+
+ParameterBlock<GBufferTextures> gbuffer;
 ParameterBlock<LightingData> lighting;
 ParameterBlock<CameraData> camera;
 
@@ -74,9 +79,9 @@ float4 fragmentMain(VertexOutput input) : SV_Target
 {
     float2 uv = input.uv;
 
-    float4 albedoSample = gAlbedo.Sample(uv);
-    float4 normalSample = gNormals.Sample(uv);
-    float depth = gDepth.Sample(uv).r;
+    float4 albedoSample = gbuffer.albedo.Sample(uv);
+    float4 normalSample = gbuffer.normals.Sample(uv);
+    float depth = gbuffer.depth.Sample(uv).r;
 
     float3 albedo = albedoSample.rgb;
     float metallic = albedoSample.a;

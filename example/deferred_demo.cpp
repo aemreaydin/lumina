@@ -18,6 +18,7 @@
 #include "Renderer/RHI/RHISampler.hpp"
 #include "Renderer/RHI/RHISwapchain.hpp"
 #include "Renderer/RenderGraph.hpp"
+#include "Renderer/Scene/LightData.hpp"
 #include "Renderer/Scene/Scene.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
 #include "Renderer/Scene/SceneRenderer.hpp"
@@ -25,7 +26,34 @@
 #include "Renderer/ShaderReflection.hpp"
 #include "UI/RHIImGui.hpp"
 
-struct DebugParamsUBO
+// GPU-side structs matching deferred_lighting.slang layout
+struct PointLightGPU
+{
+  linalg::Vec3 Position;
+  float Radius;
+  linalg::Vec3 Color;
+  float Intensity;
+};
+
+struct DirectionalLightGPU
+{
+  linalg::Vec3 Direction;
+  float Intensity;
+  linalg::Vec3 Color;
+  float _pad {0.0F};
+};
+
+static constexpr int kMaxPointLights = 64;
+
+struct LightingUBO
+{
+  PointLightGPU PointLights[kMaxPointLights] {};
+  DirectionalLightGPU DirLight {};
+  int32_t NumPointLights {0};
+  float _pad[3] {0.0F, 0.0F, 0.0F};
+};
+
+struct CompositeParamsUBO
 {
   int32_t DisplayMode {0};
   float NearPlane {0.01F};
@@ -41,7 +69,7 @@ public:
 protected:
   void OnInit() override
   {
-    Logger::Info("DeferredDemoApp::OnInit - Setting up deferred rendering demo");
+    Logger::Info("DeferredDemoApp::OnInit - Setting up deferred lighting demo");
 
     m_AssetManager = std::make_unique<AssetManager>(GetDevice());
     m_SceneRenderer = std::make_unique<SceneRenderer>(
@@ -49,24 +77,21 @@ protected:
     m_AssetManager->SetMaterialDescriptorSetLayout(
         m_SceneRenderer->GetSetLayout("material"));
 
-    m_Scene = std::make_unique<Scene>("Deferred Rendering Demo Scene");
+    m_Scene = std::make_unique<Scene>("Deferred Lighting Demo Scene");
 
     auto lion_head = m_AssetManager->LoadModel("lion_head/lion_head_4k.obj");
     if (!lion_head) {
-      Logger::Error("Failed to load model!");
-      throw std::runtime_error("Failed to load model");
+      throw std::runtime_error("Failed to load lion_head model");
     }
     auto coffee_table =
         m_AssetManager->LoadModel("coffee_table/gothic_coffee_table_4k.obj");
     if (!coffee_table) {
-      Logger::Error("Failed to load model!");
-      throw std::runtime_error("Failed to load model");
+      throw std::runtime_error("Failed to load coffee_table model");
     }
     auto chair =
         m_AssetManager->LoadModel("chair/mid_century_lounge_chair_4k.obj");
     if (!chair) {
-      Logger::Error("Failed to load model!");
-      throw std::runtime_error("Failed to load model");
+      throw std::runtime_error("Failed to load chair model");
     }
 
     auto* node1 = m_Scene->CreateNode("Lion Head");
@@ -84,6 +109,8 @@ protected:
     node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, 0.0F});
     node3->SetScale(3.0F);
 
+    setupLights();
+
     m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
     m_Camera.SetPosition(linalg::Vec3 {0.0F, 15.0F, 5.0F});
     m_Camera.SetTarget(linalg::Vec3 {0.0F, 0.0F, 0.0F});
@@ -92,13 +119,14 @@ protected:
 
     GetImGui().SetCamera(m_Camera);
 
-    setupDebugShader();
+    setupLightingShader();
+    setupCompositeShader();
     setupRenderGraph();
 
-    Logger::Info("Deferred demo initialized with {} nodes",
+    Logger::Info("Deferred lighting demo initialized with {} nodes",
                  m_Scene->GetNodeCount());
     Logger::Info(
-        "Controls: ESC=Exit, 1-5=GBuffer layers, G=Grid, F1=Settings");
+        "Controls: ESC=Exit, 1-7=Display modes, G=Grid, F1=Settings");
   }
 
   void OnUpdate(float delta_time) override
@@ -108,24 +136,15 @@ protected:
       return;
     }
 
-    // Display mode key shortcuts
-    if (Input::IsKeyPressed(KeyCode::Num1)) {
-      m_DisplayMode = 0;
-    }
-    if (Input::IsKeyPressed(KeyCode::Num2)) {
-      m_DisplayMode = 1;
-    }
-    if (Input::IsKeyPressed(KeyCode::Num3)) {
-      m_DisplayMode = 2;
-    }
-    if (Input::IsKeyPressed(KeyCode::Num4)) {
-      m_DisplayMode = 3;
-    }
-    if (Input::IsKeyPressed(KeyCode::Num5)) {
-      m_DisplayMode = 4;
+    // Display mode key shortcuts (7 modes)
+    for (int i = 0; i < 7; ++i) {
+      if (Input::IsKeyPressed(
+              static_cast<KeyCode>(static_cast<int>(KeyCode::Num1) + i)))
+      {
+        m_DisplayMode = i;
+      }
     }
 
-    // Toggle grid
     if (Input::IsKeyPressed(KeyCode::G)) {
       m_ShowGrid = !m_ShowGrid;
     }
@@ -149,7 +168,8 @@ protected:
       GetImGui().SetSelectedNode(m_Scene->PickNode(ray));
     }
 
-    updateDebugParams();
+    updateLightingUBO();
+    updateCompositeParams();
 
     if (swapchain->GetWidth() != m_LastWidth
         || swapchain->GetHeight() != m_LastHeight)
@@ -159,7 +179,7 @@ protected:
       GetDevice().WaitIdle();
       GetRenderGraph().Resize(GetDevice(), m_LastWidth, m_LastHeight);
 
-      rebindDebugTexture();
+      rebindTextures();
     }
   }
 
@@ -167,80 +187,183 @@ protected:
   {
     Logger::Info("DeferredDemoApp::OnDestroy - Cleaning up");
     m_FPSController.reset();
-    m_DebugParamsDescriptorSet.reset();
-    m_DebugTextureDescriptorSet.reset();
-    m_DebugPipelineLayout.reset();
-    m_DebugReflectedLayout.SetLayouts.clear();
-    m_DebugReflectedLayout.ParameterSetIndex.clear();
-    m_DebugVS.reset();
-    m_DebugFS.reset();
-    m_DebugSampler.reset();
-    m_DebugParamsBuffer.reset();
+
+    // Lighting shader resources
+    m_LightGBufferDescriptorSet.reset();
+    m_LightingDataDescriptorSet.reset();
+    m_LightCameraDescriptorSet.reset();
+    m_LightPipelineLayout.reset();
+    m_LightReflectedLayout.SetLayouts.clear();
+    m_LightReflectedLayout.ParameterSetIndex.clear();
+    m_LightVS.reset();
+    m_LightFS.reset();
+    m_LightingUBOBuffer.reset();
+    m_LightCameraUBOBuffer.reset();
+
+    // Composite shader resources
+    m_CompositeParamsDescriptorSet.reset();
+    m_CompositeTextureDescriptorSet.reset();
+    m_CompositePipelineLayout.reset();
+    m_CompositeReflectedLayout.SetLayouts.clear();
+    m_CompositeReflectedLayout.ParameterSetIndex.clear();
+    m_CompositeVS.reset();
+    m_CompositeFS.reset();
+    m_CompositeParamsBuffer.reset();
+
+    m_Sampler.reset();
     m_SceneRenderer.reset();
     m_Scene.reset();
     m_AssetManager.reset();
   }
 
 private:
-  void setupDebugShader()
+  void setupLights()
   {
-    // Compile the debug visualization shader
-    const auto shader_result = ShaderCompiler::Compile(
-        "shaders/gbuffer_debug.slang", GetRendererConfig().API);
+    // Directional light (sun)
+    auto* sun = m_Scene->CreateNode("Sun");
+    LightComponent sun_light;
+    sun_light.LightType = LightComponent::Type::Directional;
+    sun_light.Direction = linalg::Vec3 {-0.5F, -1.0F, -0.3F};
+    sun_light.Color = linalg::Vec3 {1.0F, 0.95F, 0.9F};
+    sun_light.Intensity = 2.0F;
+    sun->SetLight(sun_light);
 
-    // Reflect the layout to get set indices for "params" and "debugTexture"
-    m_DebugReflectedLayout = CreatePipelineLayoutFromReflection(
+    // Red point light
+    auto* red_light = m_Scene->CreateNode("Red Light");
+    red_light->SetPosition(linalg::Vec3 {-3.0F, 5.0F, 2.0F});
+    LightComponent red;
+    red.LightType = LightComponent::Type::Point;
+    red.Color = linalg::Vec3 {1.0F, 0.2F, 0.1F};
+    red.Intensity = 3.0F;
+    red.Radius = 15.0F;
+    red_light->SetLight(red);
+
+    // Blue point light
+    auto* blue_light = m_Scene->CreateNode("Blue Light");
+    blue_light->SetPosition(linalg::Vec3 {3.0F, 5.0F, -2.0F});
+    LightComponent blue;
+    blue.LightType = LightComponent::Type::Point;
+    blue.Color = linalg::Vec3 {0.1F, 0.3F, 1.0F};
+    blue.Intensity = 3.0F;
+    blue.Radius = 15.0F;
+    blue_light->SetLight(blue);
+
+    // White point light
+    auto* white_light = m_Scene->CreateNode("White Light");
+    white_light->SetPosition(linalg::Vec3 {0.0F, 8.0F, 0.0F});
+    LightComponent white;
+    white.LightType = LightComponent::Type::Point;
+    white.Color = linalg::Vec3 {1.0F, 1.0F, 1.0F};
+    white.Intensity = 2.0F;
+    white.Radius = 20.0F;
+    white_light->SetLight(white);
+  }
+
+  void setupLightingShader()
+  {
+    const auto shader_result = ShaderCompiler::Compile(
+        "shaders/deferred_lighting.slang", GetRendererConfig().API);
+
+    m_LightReflectedLayout = CreatePipelineLayoutFromReflection(
         GetDevice(), shader_result.Reflection);
 
-    m_DebugParamsSetIndex =
-        m_DebugReflectedLayout.GetSetIndex("params");
-    m_DebugTextureSetIndex =
-        m_DebugReflectedLayout.GetSetIndex("debugTexture");
+    m_LightPipelineLayout =
+        GetDevice().CreatePipelineLayout(m_LightReflectedLayout.SetLayouts);
 
-    // Create pipeline layout from reflected set layouts
-    m_DebugPipelineLayout =
-        GetDevice().CreatePipelineLayout(m_DebugReflectedLayout.SetLayouts);
-
-    // Create shader modules
     ShaderModuleDesc vertex_desc {};
     vertex_desc.Stage = ShaderStage::Vertex;
     vertex_desc.SPIRVCode = shader_result.GetSPIRV(ShaderType::Vertex);
     vertex_desc.GLSLCode = shader_result.GetGLSL(ShaderType::Vertex);
     vertex_desc.EntryPoint = "vertexMain";
-    vertex_desc.SetLayouts = m_DebugReflectedLayout.SetLayouts;
-    m_DebugVS = GetDevice().CreateShaderModule(vertex_desc);
+    vertex_desc.SetLayouts = m_LightReflectedLayout.SetLayouts;
+    m_LightVS = GetDevice().CreateShaderModule(vertex_desc);
 
     ShaderModuleDesc fragment_desc {};
     fragment_desc.Stage = ShaderStage::Fragment;
     fragment_desc.SPIRVCode = shader_result.GetSPIRV(ShaderType::Fragment);
     fragment_desc.GLSLCode = shader_result.GetGLSL(ShaderType::Fragment);
     fragment_desc.EntryPoint = "fragmentMain";
-    fragment_desc.SetLayouts = m_DebugReflectedLayout.SetLayouts;
-    m_DebugFS = GetDevice().CreateShaderModule(fragment_desc);
+    fragment_desc.SetLayouts = m_LightReflectedLayout.SetLayouts;
+    m_LightFS = GetDevice().CreateShaderModule(fragment_desc);
 
-    // Create sampler
+    // Create sampler (shared between passes)
     SamplerDesc sampler_desc {};
     sampler_desc.MinFilter = Filter::Linear;
     sampler_desc.MagFilter = Filter::Linear;
     sampler_desc.MaxLod = 0.0F;
-    m_DebugSampler = GetDevice().CreateSampler(sampler_desc);
+    m_Sampler = GetDevice().CreateSampler(sampler_desc);
 
-    // Create UBO buffer for DebugParams (16 bytes)
-    BufferDesc buffer_desc {};
-    buffer_desc.Size = sizeof(DebugParamsUBO);
-    buffer_desc.Usage = BufferUsage::Uniform;
-    buffer_desc.CPUVisible = true;
-    m_DebugParamsBuffer = GetDevice().CreateBuffer(buffer_desc);
+    // Lighting UBO buffer
+    BufferDesc lighting_buf_desc {};
+    lighting_buf_desc.Size = sizeof(LightingUBO);
+    lighting_buf_desc.Usage = BufferUsage::Uniform;
+    lighting_buf_desc.CPUVisible = true;
+    m_LightingUBOBuffer = GetDevice().CreateBuffer(lighting_buf_desc);
 
-    // Create descriptor sets
-    m_DebugParamsDescriptorSet = GetDevice().CreateDescriptorSet(
-        m_DebugReflectedLayout.GetSetLayout("params"));
-    m_DebugTextureDescriptorSet = GetDevice().CreateDescriptorSet(
-        m_DebugReflectedLayout.GetSetLayout("debugTexture"));
+    // Camera UBO buffer for lighting pass
+    BufferDesc camera_buf_desc {};
+    camera_buf_desc.Size = sizeof(CameraUBO);
+    camera_buf_desc.Usage = BufferUsage::Uniform;
+    camera_buf_desc.CPUVisible = true;
+    m_LightCameraUBOBuffer = GetDevice().CreateBuffer(camera_buf_desc);
 
-    // Write the UBO to the params descriptor set
-    m_DebugParamsDescriptorSet->WriteBuffer(
-        0, m_DebugParamsBuffer.get(), 0, sizeof(DebugParamsUBO));
+    // Descriptor sets
+    m_LightGBufferDescriptorSet = GetDevice().CreateDescriptorSet(
+        m_LightReflectedLayout.GetSetLayout("gbuffer"));
+
+    m_LightingDataDescriptorSet = GetDevice().CreateDescriptorSet(
+        m_LightReflectedLayout.GetSetLayout("lighting"));
+    m_LightingDataDescriptorSet->WriteBuffer(
+        0, m_LightingUBOBuffer.get(), 0, sizeof(LightingUBO));
+
+    m_LightCameraDescriptorSet = GetDevice().CreateDescriptorSet(
+        m_LightReflectedLayout.GetSetLayout("camera"));
+    m_LightCameraDescriptorSet->WriteBuffer(
+        0, m_LightCameraUBOBuffer.get(), 0, sizeof(CameraUBO));
+  }
+
+  void setupCompositeShader()
+  {
+    const auto shader_result = ShaderCompiler::Compile(
+        "shaders/deferred_composite.slang", GetRendererConfig().API);
+
+    m_CompositeReflectedLayout = CreatePipelineLayoutFromReflection(
+        GetDevice(), shader_result.Reflection);
+
+    m_CompositePipelineLayout =
+        GetDevice().CreatePipelineLayout(m_CompositeReflectedLayout.SetLayouts);
+
+    ShaderModuleDesc vertex_desc {};
+    vertex_desc.Stage = ShaderStage::Vertex;
+    vertex_desc.SPIRVCode = shader_result.GetSPIRV(ShaderType::Vertex);
+    vertex_desc.GLSLCode = shader_result.GetGLSL(ShaderType::Vertex);
+    vertex_desc.EntryPoint = "vertexMain";
+    vertex_desc.SetLayouts = m_CompositeReflectedLayout.SetLayouts;
+    m_CompositeVS = GetDevice().CreateShaderModule(vertex_desc);
+
+    ShaderModuleDesc fragment_desc {};
+    fragment_desc.Stage = ShaderStage::Fragment;
+    fragment_desc.SPIRVCode = shader_result.GetSPIRV(ShaderType::Fragment);
+    fragment_desc.GLSLCode = shader_result.GetGLSL(ShaderType::Fragment);
+    fragment_desc.EntryPoint = "fragmentMain";
+    fragment_desc.SetLayouts = m_CompositeReflectedLayout.SetLayouts;
+    m_CompositeFS = GetDevice().CreateShaderModule(fragment_desc);
+
+    // Composite params UBO buffer
+    BufferDesc params_buf_desc {};
+    params_buf_desc.Size = sizeof(CompositeParamsUBO);
+    params_buf_desc.Usage = BufferUsage::Uniform;
+    params_buf_desc.CPUVisible = true;
+    m_CompositeParamsBuffer = GetDevice().CreateBuffer(params_buf_desc);
+
+    // Descriptor sets
+    m_CompositeParamsDescriptorSet = GetDevice().CreateDescriptorSet(
+        m_CompositeReflectedLayout.GetSetLayout("params"));
+    m_CompositeParamsDescriptorSet->WriteBuffer(
+        0, m_CompositeParamsBuffer.get(), 0, sizeof(CompositeParamsUBO));
+
+    m_CompositeTextureDescriptorSet = GetDevice().CreateDescriptorSet(
+        m_CompositeReflectedLayout.GetSetLayout("textures"));
   }
 
   void setupRenderGraph()
@@ -251,6 +374,7 @@ private:
 
     auto& graph = GetRenderGraph();
 
+    // GBuffer resources (same as Phase 1)
     graph.AddResource({
         .Name = "GBuffer.Albedo",
         .Width = m_LastWidth,
@@ -276,7 +400,17 @@ private:
         .IsDepth = true,
     });
 
-    // GeometryPass - writes all 3 GBuffer resources (2 color + depth)
+    // HDR lighting output
+    graph.AddResource({
+        .Name = "LitScene",
+        .Width = m_LastWidth,
+        .Height = m_LastHeight,
+        .ColorFormat = TextureFormat::RGBA16F,
+        .HasDepth = false,
+        .IsDepth = false,
+    });
+
+    // GeometryPass - writes GBuffer
     graph.AddPass({
         .Name = "GeometryPass",
         .Outputs = {"GBuffer.Albedo", "GBuffer.Normals", "GBuffer.Depth"},
@@ -301,10 +435,39 @@ private:
         },
     });
 
-    // CompositePass - reads selected GBuffer layer, writes to backbuffer
+    // LightingPass - reads GBuffer, writes LitScene
+    graph.AddPass({
+        .Name = "LightingPass",
+        .Inputs = {"GBuffer.Albedo", "GBuffer.Normals", "GBuffer.Depth"},
+        .Outputs = {"LitScene"},
+        .ColorAttachments =
+            {AttachmentInfo {.ColorLoadOp = LoadOp::Clear,
+                             .ClearColor = {.R = 0, .G = 0, .B = 0, .A = 1}}},
+        .ColorAttachmentCount = 1,
+        .UseDepth = false,
+        .Execute =
+            [this](RHICommandBuffer& cmd)
+        {
+          cmd.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
+          cmd.BindShaders(m_LightVS.get(), m_LightFS.get());
+          cmd.BindDescriptorSet(
+              m_LightReflectedLayout.GetSetIndex("gbuffer"),
+              *m_LightGBufferDescriptorSet, *m_LightPipelineLayout);
+          cmd.BindDescriptorSet(
+              m_LightReflectedLayout.GetSetIndex("lighting"),
+              *m_LightingDataDescriptorSet, *m_LightPipelineLayout);
+          cmd.BindDescriptorSet(
+              m_LightReflectedLayout.GetSetIndex("camera"),
+              *m_LightCameraDescriptorSet, *m_LightPipelineLayout);
+          cmd.Draw(3, 1, 0, 0);
+        },
+    });
+
+    // CompositePass - reads LitScene + GBuffer, writes backbuffer
     graph.AddPass({
         .Name = "CompositePass",
-        .Inputs = {"GBuffer.Albedo", "GBuffer.Normals", "GBuffer.Depth"},
+        .Inputs = {"LitScene", "GBuffer.Albedo", "GBuffer.Normals",
+                   "GBuffer.Depth"},
         .Outputs = {RenderGraph::BACKBUFFER},
         .ColorAttachments =
             {AttachmentInfo {.ColorLoadOp = LoadOp::Clear,
@@ -315,13 +478,13 @@ private:
             [this](RHICommandBuffer& cmd)
         {
           cmd.SetPrimitiveTopology(PrimitiveTopology::TriangleList);
-          cmd.BindShaders(m_DebugVS.get(), m_DebugFS.get());
-          cmd.BindDescriptorSet(m_DebugParamsSetIndex,
-                                *m_DebugParamsDescriptorSet,
-                                *m_DebugPipelineLayout);
-          cmd.BindDescriptorSet(m_DebugTextureSetIndex,
-                                *m_DebugTextureDescriptorSet,
-                                *m_DebugPipelineLayout);
+          cmd.BindShaders(m_CompositeVS.get(), m_CompositeFS.get());
+          cmd.BindDescriptorSet(
+              m_CompositeReflectedLayout.GetSetIndex("params"),
+              *m_CompositeParamsDescriptorSet, *m_CompositePipelineLayout);
+          cmd.BindDescriptorSet(
+              m_CompositeReflectedLayout.GetSetIndex("textures"),
+              *m_CompositeTextureDescriptorSet, *m_CompositePipelineLayout);
           cmd.Draw(3, 1, 0, 0);
 
           renderDebugUI();
@@ -331,41 +494,49 @@ private:
     });
 
     graph.Compile(GetDevice());
-    rebindDebugTexture();
+    rebindTextures();
   }
 
-  [[nodiscard]] static auto getTextureNameForMode(int mode) -> const char*
+  void rebindTextures()
   {
-    switch (mode) {
-      case 0:  // Albedo
-      case 3:  // Metallic (stored in albedo alpha)
-        return "GBuffer.Albedo";
-      case 1:  // Normals
-      case 4:  // Roughness (stored in normals alpha)
-        return "GBuffer.Normals";
-      case 2:  // Depth
-        return "GBuffer.Depth";
-      default:
-        return "GBuffer.Albedo";
-    }
-  }
+    auto& graph = GetRenderGraph();
 
-  void rebindDebugTexture()
-  {
-    const char* tex_name = getTextureNameForMode(m_DisplayMode);
-    auto* texture = GetRenderGraph().GetTexture(tex_name);
-    if (texture != nullptr && m_DebugTextureDescriptorSet != nullptr) {
-      m_DebugTextureDescriptorSet->WriteCombinedImageSampler(
-          0, texture, m_DebugSampler.get());
+    auto* albedo_tex = graph.GetTexture("GBuffer.Albedo");
+    auto* normals_tex = graph.GetTexture("GBuffer.Normals");
+    auto* depth_tex = graph.GetTexture("GBuffer.Depth");
+    auto* lit_scene_tex = graph.GetTexture("LitScene");
+
+    // Lighting pass - GBuffer textures
+    if (albedo_tex != nullptr && m_LightGBufferDescriptorSet != nullptr) {
+      m_LightGBufferDescriptorSet->WriteCombinedImageSampler(
+          0, albedo_tex, m_Sampler.get());
+      m_LightGBufferDescriptorSet->WriteCombinedImageSampler(
+          1, normals_tex, m_Sampler.get());
+      m_LightGBufferDescriptorSet->WriteCombinedImageSampler(
+          2, depth_tex, m_Sampler.get());
     }
 
-    // Update grid textures for ImGui thumbnails
-    m_GridTextures[0] = GetRenderGraph().GetTexture("GBuffer.Albedo");
-    m_GridTextures[1] = GetRenderGraph().GetTexture("GBuffer.Normals");
-    m_GridTextures[2] = GetRenderGraph().GetTexture("GBuffer.Depth");
+    // Composite pass - all textures
+    if (lit_scene_tex != nullptr
+        && m_CompositeTextureDescriptorSet != nullptr)
+    {
+      m_CompositeTextureDescriptorSet->WriteCombinedImageSampler(
+          0, lit_scene_tex, m_Sampler.get());
+      m_CompositeTextureDescriptorSet->WriteCombinedImageSampler(
+          1, albedo_tex, m_Sampler.get());
+      m_CompositeTextureDescriptorSet->WriteCombinedImageSampler(
+          2, normals_tex, m_Sampler.get());
+      m_CompositeTextureDescriptorSet->WriteCombinedImageSampler(
+          3, depth_tex, m_Sampler.get());
+    }
 
-    // Register textures for ImGui rendering
-    for (int i = 0; i < 3; ++i) {
+    // ImGui grid textures
+    m_GridTextures[0] = albedo_tex;
+    m_GridTextures[1] = normals_tex;
+    m_GridTextures[2] = depth_tex;
+    m_GridTextures[3] = lit_scene_tex;
+
+    for (int i = 0; i < 4; ++i) {
       if (m_GridTextures[i] != nullptr) {
         m_GridImGuiTextures[i] = reinterpret_cast<ImTextureID>(
             GetImGui().RegisterTexture(m_GridTextures[i]));
@@ -373,33 +544,61 @@ private:
     }
   }
 
-  void updateDebugParams()
+  void updateLightingUBO()
   {
-    DebugParamsUBO params {};
+    // Upload lighting data
+    LightingUBO lighting {};
+
+    auto point_lights = m_Scene->GetPointLights();
+    lighting.NumPointLights = static_cast<int32_t>(
+        std::min(point_lights.size(), static_cast<size_t>(kMaxPointLights)));
+
+    for (int i = 0; i < lighting.NumPointLights; ++i) {
+      lighting.PointLights[i].Position = point_lights[i].Position;
+      lighting.PointLights[i].Radius = point_lights[i].Radius;
+      lighting.PointLights[i].Color = point_lights[i].Color;
+      lighting.PointLights[i].Intensity = point_lights[i].Intensity;
+    }
+
+    auto dir_light = m_Scene->GetDirectionalLight();
+    if (dir_light) {
+      lighting.DirLight.Direction = dir_light->Direction;
+      lighting.DirLight.Intensity = dir_light->Intensity;
+      lighting.DirLight.Color = dir_light->Color;
+    }
+
+    m_LightingUBOBuffer->Upload(&lighting, sizeof(LightingUBO), 0);
+
+    // Upload camera data for lighting pass
+    CameraUBO cam {};
+    cam.View = m_Camera.GetViewMatrix();
+    cam.Projection = m_Camera.GetProjectionMatrix();
+    cam.ViewProjection = m_Camera.GetViewProjectionMatrix();
+    cam.InverseViewProjection = linalg::inverse(cam.ViewProjection);
+    cam.CameraPosition = linalg::Vec4(m_Camera.GetPosition(), 1.0F);
+
+    m_LightCameraUBOBuffer->Upload(&cam, sizeof(CameraUBO), 0);
+  }
+
+  void updateCompositeParams()
+  {
+    CompositeParamsUBO params {};
     params.DisplayMode = m_DisplayMode;
     params.NearPlane = 0.01F;
     params.FarPlane = 1000.0F;
     params.Padding = 0.0F;
 
-    m_DebugParamsBuffer->Upload(&params, sizeof(DebugParamsUBO), 0);
-
-    // Rebind texture if display mode changed (different GBuffer layer)
-    static int last_mode = -1;
-    if (last_mode != m_DisplayMode) {
-      last_mode = m_DisplayMode;
-      GetDevice().WaitIdle();
-      rebindDebugTexture();
-    }
+    m_CompositeParamsBuffer->Upload(&params, sizeof(CompositeParamsUBO), 0);
   }
 
   void renderDebugUI()
   {
-    static const char* names[] = {
-        "Albedo", "Normals", "Depth", "Metallic", "Roughness"};
+    static const char* names[] = {"Final (ACES)", "Raw HDR", "Albedo",
+                                  "Normals", "Depth", "Metallic", "Roughness"};
 
-    ImGui::Begin("GBuffer Debug");
+    ImGui::Begin("Deferred Lighting");
     if (ImGui::BeginCombo("Display", names[m_DisplayMode])) {
-      for (int i = 0; i < 5; ++i) {
+      for (int i = 0; i < 7; ++i) {
         if (ImGui::Selectable(names[i], m_DisplayMode == i)) {
           m_DisplayMode = i;
         }
@@ -409,24 +608,32 @@ private:
       }
       ImGui::EndCombo();
     }
-    ImGui::Text("Keys: 1-5 layers, G grid");
+
+    auto point_lights = m_Scene->GetPointLights();
+    ImGui::Text("Point lights: %d", static_cast<int>(point_lights.size()));
+    auto dir = m_Scene->GetDirectionalLight();
+    ImGui::Text("Directional light: %s", dir ? "Yes" : "No");
+    ImGui::Text("Keys: 1-7 modes, G grid");
     ImGui::End();
 
     if (m_ShowGrid) {
-      ImGui::Begin("GBuffer Grid", &m_ShowGrid);
+      ImGui::Begin("Render Targets", &m_ShowGrid);
       float thumb = 140.0F;
-      const char* labels[] = {"Albedo", "Normals", "Depth"};
-      for (int i = 0; i < 3; ++i) {
+      const char* labels[] = {"Albedo", "Normals", "Depth", "LitScene"};
+      for (int i = 0; i < 4; ++i) {
         if (m_GridImGuiTextures[i] != 0) {
           ImGui::BeginGroup();
           ImGui::Text("%s", labels[i]);
           if (ImGui::ImageButton(
                   labels[i], m_GridImGuiTextures[i], ImVec2(thumb, thumb)))
           {
-            m_DisplayMode = i;
+            // Map grid index to display mode
+            // Grid: 0=Albedo(2), 1=Normals(3), 2=Depth(4), 3=LitScene(0)
+            static const int grid_to_mode[] = {2, 3, 4, 0};
+            m_DisplayMode = grid_to_mode[i];
           }
           ImGui::EndGroup();
-          if (i < 2) {
+          if (i < 3) {
             ImGui::SameLine();
           }
         }
@@ -444,23 +651,34 @@ private:
   Camera m_Camera;
   std::unique_ptr<FPSCameraController> m_FPSController;
 
-  // Debug shader resources
-  ReflectedPipelineLayout m_DebugReflectedLayout;
-  std::shared_ptr<RHIPipelineLayout> m_DebugPipelineLayout;
-  std::unique_ptr<RHIShaderModule> m_DebugVS;
-  std::unique_ptr<RHIShaderModule> m_DebugFS;
-  std::unique_ptr<RHISampler> m_DebugSampler;
-  std::unique_ptr<RHIBuffer> m_DebugParamsBuffer;
-  std::unique_ptr<RHIDescriptorSet> m_DebugParamsDescriptorSet;
-  std::unique_ptr<RHIDescriptorSet> m_DebugTextureDescriptorSet;
-  uint32_t m_DebugParamsSetIndex {0};
-  uint32_t m_DebugTextureSetIndex {0};
+  // Shared sampler
+  std::unique_ptr<RHISampler> m_Sampler;
+
+  // Lighting shader resources
+  ReflectedPipelineLayout m_LightReflectedLayout;
+  std::shared_ptr<RHIPipelineLayout> m_LightPipelineLayout;
+  std::unique_ptr<RHIShaderModule> m_LightVS;
+  std::unique_ptr<RHIShaderModule> m_LightFS;
+  std::unique_ptr<RHIBuffer> m_LightingUBOBuffer;
+  std::unique_ptr<RHIBuffer> m_LightCameraUBOBuffer;
+  std::unique_ptr<RHIDescriptorSet> m_LightGBufferDescriptorSet;
+  std::unique_ptr<RHIDescriptorSet> m_LightingDataDescriptorSet;
+  std::unique_ptr<RHIDescriptorSet> m_LightCameraDescriptorSet;
+
+  // Composite shader resources
+  ReflectedPipelineLayout m_CompositeReflectedLayout;
+  std::shared_ptr<RHIPipelineLayout> m_CompositePipelineLayout;
+  std::unique_ptr<RHIShaderModule> m_CompositeVS;
+  std::unique_ptr<RHIShaderModule> m_CompositeFS;
+  std::unique_ptr<RHIBuffer> m_CompositeParamsBuffer;
+  std::unique_ptr<RHIDescriptorSet> m_CompositeParamsDescriptorSet;
+  std::unique_ptr<RHIDescriptorSet> m_CompositeTextureDescriptorSet;
 
   // Display state
   int m_DisplayMode {0};
   bool m_ShowGrid {false};
-  RHITexture* m_GridTextures[3] {nullptr, nullptr, nullptr};
-  ImTextureID m_GridImGuiTextures[3] {0, 0, 0};
+  RHITexture* m_GridTextures[4] {nullptr, nullptr, nullptr, nullptr};
+  ImTextureID m_GridImGuiTextures[4] {0, 0, 0, 0};
 
   // Resize tracking
   uint32_t m_LastWidth {0};

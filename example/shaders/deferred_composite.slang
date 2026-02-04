@@ -12,11 +12,16 @@ struct CompositeParams
     float padding;
 };
 
+struct CompositeTextures
+{
+    Sampler2D litScene;
+    Sampler2D albedo;
+    Sampler2D normals;
+    Sampler2D depth;
+};
+
 ParameterBlock<CompositeParams> params;
-Sampler2D gLitScene;
-Sampler2D gAlbedo;
-Sampler2D gNormals;
-Sampler2D gDepth;
+ParameterBlock<CompositeTextures> textures;
 
 [shader("vertex")]
 VertexOutput vertexMain(uint vertexID : SV_VertexID)
@@ -56,40 +61,40 @@ float4 fragmentMain(VertexOutput input) : SV_Target
     {
         case 0:
         {
-            float3 hdr = gLitScene.Sample(uv).rgb;
+            float3 hdr = textures.litScene.Sample(uv).rgb;
             float3 mapped = ACESFilmic(hdr);
             float3 gamma = pow(mapped, float3(1.0 / 2.2));
             return float4(gamma, 1.0);
         }
         case 1:
         {
-            float3 hdr = gLitScene.Sample(uv).rgb;
+            float3 hdr = textures.litScene.Sample(uv).rgb;
             return float4(saturate(hdr), 1.0);
         }
         case 2:
         {
-            return float4(gAlbedo.Sample(uv).rgb, 1.0);
+            return float4(textures.albedo.Sample(uv).rgb, 1.0);
         }
         case 3:
         {
-            return float4(gNormals.Sample(uv).rgb * 0.5 + 0.5, 1.0);
+            return float4(textures.normals.Sample(uv).rgb * 0.5 + 0.5, 1.0);
         }
         case 4:
         {
-            float d = linearizeDepth(gDepth.Sample(uv).r, params.nearPlane, params.farPlane);
+            float d = linearizeDepth(textures.depth.Sample(uv).r, params.nearPlane, params.farPlane);
             return float4(float3(d / params.farPlane), 1.0);
         }
         case 5:
         {
-            return float4(gAlbedo.Sample(uv).aaa, 1.0);
+            return float4(textures.albedo.Sample(uv).aaa, 1.0);
         }
         case 6:
         {
-            return float4(gNormals.Sample(uv).aaa, 1.0);
+            return float4(textures.normals.Sample(uv).aaa, 1.0);
         }
         default:
         {
-            return float4(gLitScene.Sample(uv).rgb, 1.0);
+            return float4(textures.litScene.Sample(uv).rgb, 1.0);
         }
     }
 }
