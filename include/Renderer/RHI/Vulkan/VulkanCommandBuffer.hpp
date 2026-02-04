@@ -28,13 +28,9 @@ public:
   void Begin();
   void End();
 
-  // Render pass (Vulkan-specific, needs swapchain)
-  void BeginRenderPass(const VulkanSwapchain& swapchain,
-                       const RenderPassInfo& info);
-  void EndRenderPass(const VulkanSwapchain& swapchain);
-
-  void ClearColor(
-      const VulkanSwapchain& swapchain, float r, float g, float b, float a);
+  // RHICommandBuffer interface (render pass)
+  void BeginRenderPass(const RenderPassInfo& info) override;
+  void EndRenderPass() override;
 
   // RHICommandBuffer interface (drawing commands)
   void BindShaders(const RHIShaderModule* vertex_shader,
@@ -62,9 +58,11 @@ public:
   [[nodiscard]] auto GetHandle() const -> VkCommandBuffer;
 
 private:
+  const VulkanDevice* m_Device {nullptr};
   VkCommandBuffer m_CommandBuffer {VK_NULL_HANDLE};
   bool m_Recording {false};
   bool m_InRenderPass {false};
+  bool m_IsSwapchainTarget {false};
   RenderPassInfo m_CurrentRenderPass {};
   PolygonMode m_PolygonMode {PolygonMode::Fill};
 };

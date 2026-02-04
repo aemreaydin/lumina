@@ -56,10 +56,10 @@ protected:
 
   std::unique_ptr<SettingsPanel> m_SettingsPanel;
   std::unique_ptr<SceneHierarchyPanel> m_SceneHierarchyPanel;
-  bool m_ShowSettings = false;
-  bool m_ShowSceneHierarchy = false;
-  float m_SettingsAnimProgress = 0.0F;
-  float m_HierarchyAnimProgress = 0.0F;
+  bool m_ShowSettings = true;
+  bool m_ShowSceneHierarchy = true;
+  float m_SettingsAnimProgress = 1.0F;
+  float m_HierarchyAnimProgress = 1.0F;
 };
 
 #endif

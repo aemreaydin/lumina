@@ -25,6 +25,8 @@ struct SamplerDesc
   SamplerAddressMode AddressModeU {SamplerAddressMode::Repeat};
   SamplerAddressMode AddressModeV {SamplerAddressMode::Repeat};
   float MaxAnisotropy {1.0F};
+  float MinLod {0.0F};
+  float MaxLod {1000.0F};
   bool EnableAnisotropy {false};
 };
 

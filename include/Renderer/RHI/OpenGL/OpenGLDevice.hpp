@@ -31,9 +31,11 @@ public:
   void Present() override;
   void WaitIdle() override;
 
-  [[nodiscard]] auto GetSwapchain() -> RHISwapchain* override;
+  [[nodiscard]] auto GetSwapchain() const -> RHISwapchain* override;
   [[nodiscard]] auto GetCurrentCommandBuffer() -> RHICommandBuffer* override;
 
+  [[nodiscard]] auto CreateRenderTarget(const RenderTargetDesc& desc)
+      -> std::unique_ptr<RHIRenderTarget> override;
   [[nodiscard]] auto CreateBuffer(const BufferDesc& desc)
       -> std::unique_ptr<RHIBuffer> override;
   [[nodiscard]] auto CreateTexture(const TextureDesc& desc)

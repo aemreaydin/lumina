@@ -23,10 +23,8 @@ public:
   void Begin();
   void End();
 
-  void BeginRenderPass(const RenderPassInfo& info);
-  void EndRenderPass();
-
-  static void ClearColor(float r, float g, float b, float a);
+  void BeginRenderPass(const RenderPassInfo& info) override;
+  void EndRenderPass() override;
 
   // RHICommandBuffer interface (drawing commands)
   void BindShaders(const RHIShaderModule* vertex_shader,

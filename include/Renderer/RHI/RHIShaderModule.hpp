@@ -55,6 +55,7 @@ struct ShaderModuleDesc
 {
   ShaderStage Stage {ShaderStage::Vertex};
   std::vector<uint32_t> SPIRVCode;
+  std::string GLSLCode;
   std::string EntryPoint {"main"};
   std::vector<std::shared_ptr<RHIDescriptorSetLayout>> SetLayouts;
 };

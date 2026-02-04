@@ -38,7 +38,7 @@ struct NodeUBO
 class SceneRenderer
 {
 public:
-  explicit SceneRenderer(RHIDevice& device);
+  explicit SceneRenderer(RHIDevice& device, RenderAPI api);
   ~SceneRenderer();
 
   SceneRenderer(const SceneRenderer&) = delete;
@@ -65,6 +65,7 @@ private:
   void update_camera_ubo(const Camera& camera);
 
   RHIDevice& m_Device;
+  RenderAPI m_API;
 
   ShaderCompileResult m_CompileResult;
   ReflectedPipelineLayout m_ReflectedLayout;

@@ -16,6 +16,8 @@ class RHIDescriptorSetLayout;
 class RHIDescriptorSet;
 class RHIPipelineLayout;
 class RHICommandBuffer;
+class RHIRenderTarget;
+struct RenderTargetDesc;
 struct BufferDesc;
 struct TextureDesc;
 struct SamplerDesc;
@@ -38,10 +40,12 @@ public:
   virtual void Present() = 0;
   virtual void WaitIdle() = 0;
 
-  [[nodiscard]] virtual auto GetSwapchain() -> RHISwapchain* = 0;
+  [[nodiscard]] virtual auto GetSwapchain() const -> RHISwapchain* = 0;
   [[nodiscard]] virtual auto GetCurrentCommandBuffer() -> RHICommandBuffer* = 0;
 
   // Resource creation
+  [[nodiscard]] virtual auto CreateRenderTarget(const RenderTargetDesc& desc)
+      -> std::unique_ptr<RHIRenderTarget> = 0;
   [[nodiscard]] virtual auto CreateBuffer(const BufferDesc& desc)
       -> std::unique_ptr<RHIBuffer> = 0;
   [[nodiscard]] virtual auto CreateTexture(const TextureDesc& desc)

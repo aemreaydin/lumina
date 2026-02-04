@@ -22,6 +22,10 @@ public:
   auto operator=(RHICommandBuffer&&) -> RHICommandBuffer& = delete;
   virtual ~RHICommandBuffer() = default;
 
+  // Render pass
+  virtual void BeginRenderPass(const RenderPassInfo& info) = 0;
+  virtual void EndRenderPass() = 0;
+
   // Drawing commands
   virtual void BindShaders(const RHIShaderModule* vertex_shader,
                            const RHIShaderModule* fragment_shader) = 0;
