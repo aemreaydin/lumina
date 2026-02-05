@@ -1,0 +1,420 @@
+{
+    "scene": {
+        "name": "Deferred Lighting Demo Scene",
+        "camera": {
+            "position": [
+                0.0,
+                50.0,
+                15.0
+            ],
+            "target": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "fov": 45.0,
+            "nearPlane": 0.01,
+            "farPlane": 1000.0
+        },
+        "nodes": [
+            {
+                "name": "Blue Zone",
+                "position": [
+                    -15.0,
+                    0.0,
+                    0.0
+                ],
+                "children": [
+                    {
+                        "name": "Lion Head",
+                        "model": "lion_head/lion_head_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            10.0,
+                            10.0,
+                            10.0
+                        ]
+                    },
+                    {
+                        "name": "Coffee Table",
+                        "model": "coffee_table/gothic_coffee_table_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            -3.0
+                        ],
+                        "scale": [
+                            6.0,
+                            6.0,
+                            6.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            -5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            -90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            5.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            180.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            -5.0,
+                            -3.5
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Blue Light",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "light": {
+                            "type": "point",
+                            "color": [
+                                0.0,
+                                0.0,
+                                1.0
+                            ],
+                            "intensity": 5.0,
+                            "radius": 15.0
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Green Zone",
+                "position": [
+                    15.0,
+                    0.0,
+                    0.0
+                ],
+                "children": [
+                    {
+                        "name": "Lion Head",
+                        "model": "lion_head/lion_head_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            10.0,
+                            10.0,
+                            10.0
+                        ]
+                    },
+                    {
+                        "name": "Coffee Table",
+                        "model": "coffee_table/gothic_coffee_table_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            -3.0
+                        ],
+                        "scale": [
+                            6.0,
+                            6.0,
+                            6.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            -5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            -90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            5.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            180.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            -5.0,
+                            -3.5
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Green Light",
+                        "position": [
+                            0.0,
+                            8.0,
+                            0.0
+                        ],
+                        "light": {
+                            "type": "point",
+                            "color": [
+                                0.0,
+                                1.0,
+                                0.0
+                            ],
+                            "intensity": 5.0,
+                            "radius": 20.0
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Red Zone",
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "children": [
+                    {
+                        "name": "Lion Head",
+                        "model": "lion_head/lion_head_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            10.0,
+                            10.0,
+                            10.0
+                        ]
+                    },
+                    {
+                        "name": "Coffee Table",
+                        "model": "coffee_table/gothic_coffee_table_4k.obj",
+                        "position": [
+                            0.0,
+                            0.0,
+                            -3.0
+                        ],
+                        "scale": [
+                            6.0,
+                            6.0,
+                            6.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            -5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            -90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            5.0,
+                            0.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            90.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            5.0,
+                            -3.5
+                        ],
+                        "rotation": [
+                            0.0,
+                            0.0,
+                            180.0
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Chair",
+                        "model": "chair/mid_century_lounge_chair_4k.obj",
+                        "position": [
+                            0.0,
+                            -5.0,
+                            -3.5
+                        ],
+                        "scale": [
+                            3.0,
+                            3.0,
+                            3.0
+                        ]
+                    },
+                    {
+                        "name": "Red Light",
+                        "position": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "light": {
+                            "type": "point",
+                            "color": [
+                                1.0,
+                                0.0,
+                                0.0
+                            ],
+                            "intensity": 5.0,
+                            "radius": 15.0
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "Sun",
+                "light": {
+                    "type": "directional",
+                    "direction": [
+                        -0.5,
+                        -1.0,
+                        -0.3
+                    ],
+                    "color": [
+                        1.0,
+                        0.95,
+                        0.9
+                    ],
+                    "intensity": 2.0
+                }
+            }
+        ]
+    }
+}

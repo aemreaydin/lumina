@@ -43,6 +43,7 @@ add_library(
         source/Renderer/Scene/Transform.cpp
         source/Renderer/Scene/SceneNode.cpp
         source/Renderer/Scene/Scene.cpp
+        source/Renderer/Scene/SceneSerializer.cpp
         source/Renderer/Scene/SceneRenderer.cpp
         # UI
         source/UI/ImGuiStyle.cpp
@@ -149,6 +150,13 @@ target_link_libraries(lumina_lumina PUBLIC slang::slang)
 find_package(spirv_cross_core CONFIG REQUIRED)
 find_package(spirv_cross_glsl CONFIG REQUIRED)
 target_link_libraries(lumina_lumina PUBLIC spirv-cross-core spirv-cross-glsl)
+
+# ---- nlohmann/json (header-only) ----
+add_library(nlohmann_json INTERFACE)
+target_include_directories(nlohmann_json INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party>"
+)
+target_link_libraries(lumina_lumina PUBLIC nlohmann_json)
 
 # ---- ImGui (local build) ----
 add_library(imgui STATIC

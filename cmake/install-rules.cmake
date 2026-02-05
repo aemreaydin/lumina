@@ -22,7 +22,7 @@ install(
 )
 
 install(
-    TARGETS lumina_lumina imgui linalg
+    TARGETS lumina_lumina imgui linalg nlohmann_json
     EXPORT luminaTargets
     RUNTIME #
     COMPONENT lumina_Runtime

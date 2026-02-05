@@ -1,3 +1,5 @@
+#include <filesystem>
+#include <fstream>
 #include <memory>
 
 #include <imgui.h>
@@ -22,6 +24,7 @@
 #include "Renderer/Scene/Scene.hpp"
 #include "Renderer/Scene/SceneNode.hpp"
 #include "Renderer/Scene/SceneRenderer.hpp"
+#include "Renderer/Scene/SceneSerializer.hpp"
 #include "Renderer/ShaderCompiler.hpp"
 #include "Renderer/ShaderReflection.hpp"
 #include "UI/RHIImGui.hpp"
@@ -77,62 +80,7 @@ protected:
     m_AssetManager->SetMaterialDescriptorSetLayout(
         m_SceneRenderer->GetSetLayout("material"));
 
-    m_Scene = std::make_unique<Scene>("Deferred Lighting Demo Scene");
-
-    auto lion_head = m_AssetManager->LoadModel("lion_head/lion_head_4k.obj");
-    if (!lion_head) {
-      throw std::runtime_error("Failed to load lion_head model");
-    }
-    auto coffee_table =
-        m_AssetManager->LoadModel("coffee_table/gothic_coffee_table_4k.obj");
-    if (!coffee_table) {
-      throw std::runtime_error("Failed to load coffee_table model");
-    }
-    auto chair =
-        m_AssetManager->LoadModel("chair/mid_century_lounge_chair_4k.obj");
-    if (!chair) {
-      throw std::runtime_error("Failed to load chair model");
-    }
-
-    auto* node1 = m_Scene->CreateNode("Lion Head");
-    node1->SetModel(lion_head);
-    node1->SetPosition(linalg::Vec3 {0.0F, 0.0F, 0.0F});
-    node1->SetScale(10.0F);
-
-    auto* node2 = m_Scene->CreateNode("Coffee Table");
-    node2->SetModel(coffee_table);
-    node2->SetPosition(linalg::Vec3 {0.0F, 0.0F, -3.0F});
-    node2->SetScale(6.0F);
-
-    auto* node3 = m_Scene->CreateNode("Chair");
-    node3->SetModel(chair);
-    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, -3.5F});
-    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, -90.0F});
-    node3->SetScale(3.0F);
-
-    auto* node4 = m_Scene->CreateNode("Chair");
-    node4->SetModel(chair);
-    node4->SetPosition(linalg::Vec3 {5.0F, 0.0F, -3.5F});
-    node4->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 90.0F});
-    node4->SetScale(3.0F);
-
-    auto* node5 = m_Scene->CreateNode("Chair");
-    node5->SetModel(chair);
-    node5->SetPosition(linalg::Vec3 {0.0F, 5.0F, -3.5F});
-    node5->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 180.0F});
-    node5->SetScale(3.0F);
-
-    auto* node6 = m_Scene->CreateNode("Chair");
-    node6->SetModel(chair);
-    node6->SetPosition(linalg::Vec3 {0.0F, -5.0F, -3.5F});
-    node6->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 0.0F});
-    node6->SetScale(3.0F);
-
-    setupLights();
-
-    m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
-    m_Camera.SetPosition(linalg::Vec3 {5.0F, 35.0F, 15.0F});
-    m_Camera.SetTarget(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+    loadScene("assets/scenes/default.scene.json");
 
     m_FPSController = std::make_unique<FPSCameraController>(&m_Camera);
 
@@ -236,16 +184,94 @@ protected:
   }
 
 private:
-  void setupLights()
+  void loadScene(const std::string& path)
   {
+    m_SunNode = nullptr;
+    m_PointLightNodes.clear();
+
+    if (std::filesystem::exists(path)) {
+      try {
+        auto result = SceneSerializer::Load(path, *m_AssetManager);
+        m_Scene = std::make_unique<Scene>(std::move(result.SceneData));
+        m_SceneFilePath = path;
+
+        if (result.Camera) {
+          m_Camera.SetPerspective(result.Camera->FOV, 16.0F / 9.0F,
+                                  result.Camera->NearPlane,
+                                  result.Camera->FarPlane);
+          m_Camera.SetPosition(result.Camera->Position);
+          m_Camera.SetTarget(result.Camera->Target);
+        }
+      } catch (const std::exception& e) {
+        Logger::Warn("Failed to load scene '{}': {}", path, e.what());
+        setupSceneFallback();
+      }
+    } else {
+      Logger::Info("Scene file '{}' not found, using fallback", path);
+      setupSceneFallback();
+    }
+
+    cacheLightNodes();
+  }
+
+  void setupSceneFallback()
+  {
+    m_Scene = std::make_unique<Scene>("Deferred Lighting Demo Scene");
+
+    auto lion_head = m_AssetManager->LoadModel("lion_head/lion_head_4k.obj");
+    auto coffee_table =
+        m_AssetManager->LoadModel("coffee_table/gothic_coffee_table_4k.obj");
+    auto chair =
+        m_AssetManager->LoadModel("chair/mid_century_lounge_chair_4k.obj");
+
+    auto* node1 = m_Scene->CreateNode("Lion Head");
+    node1->SetModel(lion_head);
+    node1->SetModelPath("lion_head/lion_head_4k.obj");
+    node1->SetPosition(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+    node1->SetScale(10.0F);
+
+    auto* node2 = m_Scene->CreateNode("Coffee Table");
+    node2->SetModel(coffee_table);
+    node2->SetModelPath("coffee_table/gothic_coffee_table_4k.obj");
+    node2->SetPosition(linalg::Vec3 {0.0F, 0.0F, -3.0F});
+    node2->SetScale(6.0F);
+
+    auto* node3 = m_Scene->CreateNode("Chair");
+    node3->SetModel(chair);
+    node3->SetModelPath("chair/mid_century_lounge_chair_4k.obj");
+    node3->SetPosition(linalg::Vec3 {-5.0F, 0.0F, -3.5F});
+    node3->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, -90.0F});
+    node3->SetScale(3.0F);
+
+    auto* node4 = m_Scene->CreateNode("Chair");
+    node4->SetModel(chair);
+    node4->SetModelPath("chair/mid_century_lounge_chair_4k.obj");
+    node4->SetPosition(linalg::Vec3 {5.0F, 0.0F, -3.5F});
+    node4->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 90.0F});
+    node4->SetScale(3.0F);
+
+    auto* node5 = m_Scene->CreateNode("Chair");
+    node5->SetModel(chair);
+    node5->SetModelPath("chair/mid_century_lounge_chair_4k.obj");
+    node5->SetPosition(linalg::Vec3 {0.0F, 5.0F, -3.5F});
+    node5->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 180.0F});
+    node5->SetScale(3.0F);
+
+    auto* node6 = m_Scene->CreateNode("Chair");
+    node6->SetModel(chair);
+    node6->SetModelPath("chair/mid_century_lounge_chair_4k.obj");
+    node6->SetPosition(linalg::Vec3 {0.0F, -5.0F, -3.5F});
+    node6->SetRotationEuler(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+    node6->SetScale(3.0F);
+
     // Directional light (sun)
-    m_SunNode = m_Scene->CreateNode("Sun");
+    auto* sun = m_Scene->CreateNode("Sun");
     LightComponent sun_light;
     sun_light.LightType = LightComponent::Type::Directional;
     sun_light.Direction = linalg::Vec3 {-0.5F, -1.0F, -0.3F};
     sun_light.Color = linalg::Vec3 {1.0F, 0.95F, 0.9F};
     sun_light.Intensity = 2.0F;
-    m_SunNode->SetLight(sun_light);
+    sun->SetLight(sun_light);
 
     // Red point light
     auto* red_light = m_Scene->CreateNode("Red Light");
@@ -256,7 +282,6 @@ private:
     red.Intensity = 3.0F;
     red.Radius = 15.0F;
     red_light->SetLight(red);
-    m_PointLightNodes.push_back(red_light);
 
     // Blue point light
     auto* blue_light = m_Scene->CreateNode("Blue Light");
@@ -267,7 +292,6 @@ private:
     blue.Intensity = 3.0F;
     blue.Radius = 15.0F;
     blue_light->SetLight(blue);
-    m_PointLightNodes.push_back(blue_light);
 
     // White point light
     auto* white_light = m_Scene->CreateNode("White Light");
@@ -278,7 +302,30 @@ private:
     white.Intensity = 2.0F;
     white.Radius = 20.0F;
     white_light->SetLight(white);
-    m_PointLightNodes.push_back(white_light);
+
+    m_Camera.SetPerspective(45.0F, 16.0F / 9.0F, 0.01F, 1000.0F);
+    m_Camera.SetPosition(linalg::Vec3 {5.0F, 35.0F, 15.0F});
+    m_Camera.SetTarget(linalg::Vec3 {0.0F, 0.0F, 0.0F});
+  }
+
+  void cacheLightNodes()
+  {
+    m_SunNode = nullptr;
+    m_PointLightNodes.clear();
+
+    m_Scene->ForEachNode(
+        [this](SceneNode& node)
+        {
+          if (node.HasLight()) {
+            if (node.GetLight()->LightType
+                == LightComponent::Type::Directional)
+            {
+              m_SunNode = &node;
+            } else {
+              m_PointLightNodes.push_back(&node);
+            }
+          }
+        });
   }
 
   void setupLightingShader()
@@ -613,10 +660,86 @@ private:
     m_CompositeParamsBuffer->Upload(&params, sizeof(CompositeParamsUBO), 0);
   }
 
+  void renderFileMenu()
+  {
+    if (ImGui::BeginMainMenuBar()) {
+      if (ImGui::BeginMenu("File")) {
+        if (ImGui::MenuItem("Open Scene...")) {
+          m_ShowOpenDialog = true;
+        }
+        if (ImGui::MenuItem("Save Scene",
+                            nullptr, false, !m_SceneFilePath.empty()))
+        {
+          SceneSerializer::Save(*m_Scene, m_Camera, m_SceneFilePath);
+        }
+        if (ImGui::MenuItem("Save Scene As...")) {
+          m_ShowSaveDialog = true;
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMainMenuBar();
+    }
+
+    if (m_ShowOpenDialog) {
+      ImGui::OpenPopup("Open Scene File");
+      m_ShowOpenDialog = false;
+    }
+    if (m_ShowSaveDialog) {
+      ImGui::OpenPopup("Save Scene File");
+      m_ShowSaveDialog = false;
+    }
+
+    if (ImGui::BeginPopupModal("Open Scene File", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize))
+    {
+      ImGui::InputText("Path", m_FileDialogBuffer,
+                       sizeof(m_FileDialogBuffer));
+      if (ImGui::Button("Load")) {
+        std::string path = m_FileDialogBuffer;
+        if (!path.empty()) {
+          loadScene(path);
+        }
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopupModal("Save Scene File", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize))
+    {
+      if (m_FileDialogBuffer[0] == '\0' && !m_SceneFilePath.empty()) {
+        auto len = m_SceneFilePath.copy(m_FileDialogBuffer,
+                                        sizeof(m_FileDialogBuffer) - 1);
+        m_FileDialogBuffer[len] = '\0';
+      }
+      ImGui::InputText("Path", m_FileDialogBuffer,
+                       sizeof(m_FileDialogBuffer));
+      if (ImGui::Button("Save")) {
+        std::string path = m_FileDialogBuffer;
+        if (!path.empty()) {
+          SceneSerializer::Save(*m_Scene, m_Camera, path);
+          m_SceneFilePath = path;
+        }
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+  }
+
   void renderDebugUI()
   {
     static const char* names[] = {"Final (ACES)", "Raw HDR", "Albedo",
                                   "Normals", "Depth", "Metallic", "Roughness"};
+
+    renderFileMenu();
 
     ImGui::Begin("Deferred Lighting");
     if (ImGui::BeginCombo("Display", names[m_DisplayMode])) {
@@ -689,7 +812,7 @@ private:
     // Overlay showing current mode in top-left corner
     auto* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(
-        ImVec2(viewport->Size.x * 0.5F, 10), ImGuiCond_Always,
+        ImVec2(viewport->Size.x * 0.5F, 40), ImGuiCond_Always,
         ImVec2(0.5F, 0.0F));
     ImGui::SetNextWindowBgAlpha(0.5F);
     if (ImGui::Begin("##ModeOverlay", nullptr,
@@ -769,6 +892,12 @@ private:
   bool m_ShowGrid {false};
   RHITexture* m_GridTextures[4] {nullptr, nullptr, nullptr, nullptr};
   ImTextureID m_GridImGuiTextures[4] {0, 0, 0, 0};
+
+  // Scene file management
+  std::string m_SceneFilePath;
+  bool m_ShowOpenDialog {false};
+  bool m_ShowSaveDialog {false};
+  char m_FileDialogBuffer[512] {};
 
   // Resize tracking
   uint32_t m_LastWidth {0};

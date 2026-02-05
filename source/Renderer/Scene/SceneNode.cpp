@@ -167,6 +167,16 @@ auto SceneNode::HasModel() const -> bool
   return m_Model != nullptr;
 }
 
+void SceneNode::SetModelPath(const std::string& path)
+{
+  m_ModelPath = path;
+}
+
+auto SceneNode::GetModelPath() const -> const std::string&
+{
+  return m_ModelPath;
+}
+
 void SceneNode::SetLight(const LightComponent& light)
 {
   m_Light = light;

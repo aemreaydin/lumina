@@ -174,7 +174,8 @@ auto Scene::GetPointLights() const -> std::vector<PointLightData>
       [&lights](const SceneNode& node) -> void
       {
         if (node.HasLight()
-            && node.GetLight()->LightType == LightComponent::Type::Point && node.IsVisibleInHierarchy())
+            && node.GetLight()->LightType == LightComponent::Type::Point
+            && node.IsVisibleInHierarchy())
         {
           const auto& lc = *node.GetLight();
           PointLightData data {};
@@ -195,8 +196,8 @@ auto Scene::GetDirectionalLight() const -> std::optional<DirectionalLightData>
       [&result](const SceneNode& node) -> void
       {
         if (!result && node.HasLight()
-            && node.GetLight()->LightType
-                == LightComponent::Type::Directional)
+            && node.GetLight()->LightType == LightComponent::Type::Directional
+            && node.IsVisibleInHierarchy())
         {
           const auto& lc = *node.GetLight();
           DirectionalLightData data {};

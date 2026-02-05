@@ -9,25 +9,25 @@ void ApplyFlatTheme()
 {
   ImGuiStyle& style = ImGui::GetStyle();
 
-  // Flat minimalist - no rounding, minimal borders
-  style.WindowRounding = 0.0F;
-  style.ChildRounding = 0.0F;
-  style.FrameRounding = 2.0F;
-  style.PopupRounding = 0.0F;
-  style.ScrollbarRounding = 0.0F;
-  style.GrabRounding = 2.0F;
-  style.TabRounding = 0.0F;
+  // Modern rounded style
+  style.WindowRounding = 8.0F;
+  style.ChildRounding = 6.0F;
+  style.FrameRounding = 4.0F;
+  style.PopupRounding = 6.0F;
+  style.ScrollbarRounding = 4.0F;
+  style.GrabRounding = 4.0F;
+  style.TabRounding = 4.0F;
 
-  // Compact padding
-  style.WindowPadding = ImVec2(8.0F, 8.0F);
-  style.FramePadding = ImVec2(4.0F, 3.0F);
-  style.ItemSpacing = ImVec2(8.0F, 4.0F);
-  style.ItemInnerSpacing = ImVec2(4.0F, 4.0F);
+  // Comfortable padding
+  style.WindowPadding = ImVec2(12.0F, 12.0F);
+  style.FramePadding = ImVec2(6.0F, 4.0F);
+  style.ItemSpacing = ImVec2(8.0F, 6.0F);
+  style.ItemInnerSpacing = ImVec2(6.0F, 4.0F);
 
   // Borders
   style.WindowBorderSize = 1.0F;
   style.ChildBorderSize = 1.0F;
-  style.FrameBorderSize = 1.0F;
+  style.FrameBorderSize = 0.0F;
   style.PopupBorderSize = 1.0F;
 
   // Colors - Blender/Unity inspired dark theme

@@ -67,6 +67,10 @@ public:
   [[nodiscard]] auto GetModel() const -> std::shared_ptr<Model>;
   [[nodiscard]] auto HasModel() const -> bool;
 
+  // Model path (for serialization round-trip)
+  void SetModelPath(const std::string& path);
+  [[nodiscard]] auto GetModelPath() const -> const std::string&;
+
   // Light component
   void SetLight(const LightComponent& light);
   void ClearLight();
@@ -100,6 +104,7 @@ private:
   std::vector<std::unique_ptr<SceneNode>> m_Children;
 
   std::shared_ptr<Model> m_Model;
+  std::string m_ModelPath;
   std::optional<LightComponent> m_Light;
 
   bool m_Visible {true};

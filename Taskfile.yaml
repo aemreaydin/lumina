@@ -65,9 +65,9 @@ tasks:
   run:
     desc: Run an example application (default = scene_demo)
     deps: [build, assets]
-    dir: build/simple/example
+    dir: build/simple/example/Debug
     vars:
-      EXAMPLE: '{{.EXAMPLE | default "scene_demo"}}'
+      EXAMPLE: '{{.EXAMPLE | default "deferred_demo"}}'
     cmds:
       - cmd: ./{{.EXAMPLE}}{{exeExt}}
         platforms: [linux, darwin]

@@ -77,13 +77,18 @@ void RHIImGui::RenderPanels(Scene& scene)
   }
 
   const ImVec2 display_size = imgui_io.DisplaySize;
+  constexpr float PANEL_HEIGHT_RATIO = 0.8F;
+  constexpr float PANEL_MARGIN_X = 20.0F;
+  const float panel_height = display_size.y * PANEL_HEIGHT_RATIO;
+  const float panel_y = (display_size.y - panel_height) * 0.5F;
 
   // Render settings panel (slides from right)
   if (m_SettingsAnimProgress > 0.0F) {
     const float offset = PANEL_WIDTH * (1.0F - m_SettingsAnimProgress);
     ImGui::SetNextWindowPos(
-        ImVec2(display_size.x - PANEL_WIDTH + offset, 0.0F));
-    ImGui::SetNextWindowSize(ImVec2(PANEL_WIDTH, display_size.y));
+        ImVec2(display_size.x - PANEL_WIDTH - PANEL_MARGIN_X + offset,
+               panel_y));
+    ImGui::SetNextWindowSize(ImVec2(PANEL_WIDTH, panel_height));
 
     m_SettingsPanel->Render(m_SettingsAnimProgress);
   }
@@ -91,8 +96,8 @@ void RHIImGui::RenderPanels(Scene& scene)
   // Render scene hierarchy panel (slides from left)
   if (m_HierarchyAnimProgress > 0.0F) {
     const float offset = PANEL_WIDTH * (1.0F - m_HierarchyAnimProgress);
-    ImGui::SetNextWindowPos(ImVec2(-offset, 0.0F));
-    ImGui::SetNextWindowSize(ImVec2(PANEL_WIDTH, display_size.y));
+    ImGui::SetNextWindowPos(ImVec2(PANEL_MARGIN_X - offset, panel_y));
+    ImGui::SetNextWindowSize(ImVec2(PANEL_WIDTH, panel_height));
 
     m_SceneHierarchyPanel->Render(scene, m_HierarchyAnimProgress);
   }

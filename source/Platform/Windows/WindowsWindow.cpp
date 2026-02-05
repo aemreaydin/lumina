@@ -81,6 +81,8 @@ void WindowsWindow::OnUpdate()
 
       case SDL_EVENT_KEY_DOWN:
       case SDL_EVENT_KEY_UP:
+      case SDL_EVENT_TEXT_INPUT:
+      case SDL_EVENT_TEXT_EDITING:
       case SDL_EVENT_MOUSE_MOTION:
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
       case SDL_EVENT_MOUSE_BUTTON_UP:
